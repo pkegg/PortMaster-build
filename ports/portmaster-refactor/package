@@ -1,5 +1,5 @@
 #! /bin/bash
 set -e
 
-cp ../../version pkg
+cp ./version pkg
 cp PortMaster.sh pkg
