@@ -1,0 +1,3 @@
+PKG_NAME="Bermuda Syndrome"
+PKG_ZIP_NAME_OVERRIDE="Bermuda_Syndrome"
+LEGACY_PORTMASTER="true"

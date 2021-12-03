@@ -1,0 +1,4 @@
+PKG_NAME="Hydra Castle Labyrinth"
+PKG_VERSION="e112bdb3185bcb314263543aff87db66795f85ff"
+PKG_URL="https://github.com/ptitSeb/hydracastlelabyrinth"
+GET_HANDLER_SUPPORT="git"

@@ -1,0 +1,9 @@
+#! /bin/bash
+set -e
+echo "deb http://deb.debian.org/debian buster-backports main contrib non-free" >> /etc/apt/sources.list
+dpkg --add-architecture i386
+apt-get update
+apt-get install -y --no-install-recommends \
+  nvidia-driver-libs libegl1 libstdc++5:i386
+
+

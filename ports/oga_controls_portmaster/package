@@ -1,0 +1,3 @@
+#! /bin/bash
+
+cp oga_controls pkg

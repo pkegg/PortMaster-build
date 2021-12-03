@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+# Current directory of the script
+DIR="$(realpath $( dirname "${BASH_SOURCE[0]}" ))"
+source "${DIR}/global-functions"
+
+pushd "${DIR}"
+
+initialize_permissions
+
+export SDL_GAMECONTROLLERCONFIG="$(get_sdl_controls)"
+launch_with_oga_controls hcl

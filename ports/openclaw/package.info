@@ -1,0 +1,3 @@
+PKG_NAME="OpenClaw"
+PKG_ZIP_NAME_OVERRIDE="Openclaw"
+LEGACY_PORTMASTER="true"

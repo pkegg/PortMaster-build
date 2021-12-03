@@ -1,0 +1,32 @@
+#! /bin/bash
+
+# This file is maintained for backwards compatibility and simplicity if using global-functions
+# directly is not desired
+
+# The current directory of this script.  Works when run with bash or sourced.
+DIR="$(realpath $( dirname "${BASH_SOURCE[0]}" ))"
+source $DIR/global-functions
+
+controlfolder="$DIR"
+directory=$(get_arkos_roms_dir_name)
+
+ESUDO=$(get_sudo)
+ESUDOKILL=$(get_sudo_kill)
+
+export SDL_GAMECONTROLLERCONFIG_FILE="$controlfolder/gamecontrollerdb.txt"
+SDLDBFILE="${SDL_GAMECONTROLLERCONFIG_FILE}"
+[ -z "${SDLDBFILE}" ] && SDLDBFILE="${controlfolder}/gamecontrollerdb.txt"
+SDLDBUSERFILE="${HOME}/.config/SDL-GameControllerDB/gamecontrollerdb.txt"
+
+get_controls() {
+  LOWRES="$(get_low_res)"
+  ANALOGSTICKS="$(get_num_analog_sticks)"
+  
+  DEVICE="$(get_sdl_device_id)"
+  param_device="$(get_oga_device)"
+  CONTROLS="$(get_sdl_controls)"
+  
+  sdl_controllerconfig="${CONTROLS}"
+}
+
+GPTOKEYB="$DIR/gptokeyb $ESUDOKILL"

@@ -1,0 +1,3 @@
+PKG_NAME="Return to Castle Wolfenstein"
+PKG_ZIP_NAME_OVERRIDE="iortcw"
+LEGACY_PORTMASTER="true"

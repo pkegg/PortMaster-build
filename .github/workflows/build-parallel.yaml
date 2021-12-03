@@ -1,0 +1,309 @@
+name: build-parallel
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  pull_request_target:
+    # We don't need to run builds when these files change
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+    branches:
+      - main
+    types: [opened, synchronize]
+    
+  workflow_dispatch:
+    inputs:
+      no_cache:
+        description: "Do not use any build cache and do full build.  Any value enables: (Y)"
+        required: false
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.event.repository.name }}/portmaster-build
+
+concurrency: 
+  #main will take 'build' and others will be in 'build{pr number}'
+  group: ${{github.event_name}}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true #only 1 build at a time per main/PR
+
+jobs:
+  build-base-images:
+    name: Build Base Images and Libraries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      date: ${{ steps.date.outputs.date }}
+    steps:
+      - uses: hmarr/debug-action@v2
+        name: "debug: ${{github.event_name}}${{ github.event.pull_request.number }}"
+      - name: Checkout
+        run: |
+          REPO="https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone --no-checkout --filter=blob:none $REPO .
+          if [[ -n "${{ github.event.pull_request.head.sha }}" ]]; then
+            git checkout "${{ github.event.pull_request.head.sha }}"
+          else
+            git checkout
+          fi
+      - name: Get release name for artifacts
+        id: date
+        run: |
+          if [[ "${{github.event_name}}" == "push" ]]; then
+            echo "::set-output name=date::dev-$(date +'%Y-%m-%d_%H%M')"
+          else
+            echo "::set-output name=date::$(date +'%Y-%m-%d_%H%M')"
+          fi
+      - name: Get token
+        id: token
+        run: | 
+          default_token=${{secrets.GITHUB_TOKEN}}
+          pat=${{secrets.BUILD_TOKEN}}
+          
+          if [[ -n "${pat}" ]]; then
+            echo "::set-output name=token::${pat}"
+            echo "using pat"
+          else
+            echo "::set-output name=token::${default_token}"
+            echo "using default"
+          fi
+          
+      - id: set-matrix
+        name: Determine Matrix Builds
+        run: |
+            echo -ne '::set-output name=matrix::{"package":['
+            echo -ne $(./ports/build-all  --no-build --builds | sed -e 's/^\|$/"/g' |sort | tr '\n' ',')
+            echo ']}'
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ steps.token.outputs.token }}
+      
+      - id: build-base-image
+        name: Build base image and libraries
+        run: |
+         ./init-docker
+         ./ports/build-base-images --push --platform linux/arm/v7,linux/arm64/v8,linux/amd64
+         REMOTE_BUILD_CACHE="--remote-build-cache"
+         if [[ -n "${{github.event.inputs.no_cache}}" ]]; then
+            REMOTE_BUILD_CACHE=""
+         fi
+         
+         ./ports/build-all --libraries --push ${REMOTE_BUILD_CACHE}
+        env:
+            GITHUB_TOKEN: ${{ steps.token.outputs.token }}
+      - name: "Publish draft pre-release."
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        with:
+          tag: "${{steps.date.outputs.date}}"
+          name: "${{steps.date.outputs.date}}"
+          allowUpdates: true
+          draft: true
+          prerelease: true
+          token: ${{ steps.token.outputs.token }}
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          replacesArtifacts: false
+          artifacts: "ports.md, release/*.git.info, release/*.zip, version"
+
+  legacy:
+    name: Legacy Builds - Sharded
+    needs: build-base-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    strategy:
+      matrix:
+        shard: [1,2,3,4]
+    steps:
+      - name: Checkout
+        run: |
+          REPO="https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone --no-checkout --filter=blob:none $REPO .
+          if [[ -n "${{ github.event.pull_request.head.sha }}" ]]; then
+            git checkout "${{ github.event.pull_request.head.sha }}"
+          else
+            git checkout
+          fi
+      - name: Get token
+        id: token
+        run: | 
+          default_token=${{secrets.GITHUB_TOKEN}}
+          pat=${{secrets.BUILD_TOKEN}}
+          
+          if [[ -n "${pat}" ]]; then
+            echo "::set-output name=token::${pat}"
+            echo "using pat"
+          else
+            echo "::set-output name=token::${default_token}"
+            echo "using default"
+          fi
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ steps.token.outputs.token }}
+      
+      - name: Build ${{ matrix.package }}
+        id: build
+        run: |
+           set -e
+           ./init-docker
+           REMOTE_BUILD_CACHE="--remote-build-cache"
+           if [[ -n "${{github.event.inputs.no_cache}}" ]]; then
+              REMOTE_BUILD_CACHE=""
+           fi
+           ./ports/build-all --build-shard ${{ matrix.shard }} --build-shard-total 4 --legacy-default --legacy-url-override  --push ${REMOTE_BUILD_CACHE}
+           
+        env:
+            GITHUB_TOKEN: ${{ steps.token.outputs.token }}
+      - name: "Update pre-release: ${{needs.build-base-images.outputs.date}}"
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+
+        with:
+          tag: "${{needs.build-base-images.outputs.date}}"
+          allowUpdates: true
+          draft: true
+          prerelease: true
+          token: "${{ steps.token.outputs.token }}"
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          replacesArtifacts: false
+          artifacts: "release/*.zip, release/*.git.info"
+      - name: PR artifacts
+        uses: actions/upload-artifact@v2
+        if: github.event_name != 'workflow_dispatch' && github.event_name != 'push' 
+        with:
+          name: legacy-ports
+          path: |
+            release/*.zip
+  buildx:
+    needs: build-base-images
+    name: Full Port Builds
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    strategy:
+      matrix: ${{fromJson(needs.build-base-images.outputs.matrix)}}
+    steps:
+      - name: Checkout
+        run: |
+          REPO="https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone --no-checkout --filter=blob:none $REPO .
+          if [[ -n "${{ github.event.pull_request.head.sha }}" ]]; then
+            git checkout "${{ github.event.pull_request.head.sha }}"
+          else
+            git checkout
+          fi
+      - name: Get token
+        id: token
+        run: | 
+          default_token=${{secrets.GITHUB_TOKEN}}
+          pat=${{secrets.BUILD_TOKEN}}
+          
+          if [[ -n "${pat}" ]]; then
+            echo "::set-output name=token::${pat}"
+            echo "using pat"
+          else
+            echo "::set-output name=token::${default_token}"
+            echo "using default"
+          fi
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ steps.token.outputs.token }}
+      
+      - name: Build ${{ matrix.package }}
+        id: build
+        run: |
+           set -e
+           ./init-docker
+           REMOTE_BUILD_CACHE="--remote-build-cache"
+           if [[ -n "${{github.event.inputs.no_cache}}" ]]; then
+              REMOTE_BUILD_CACHE=""
+           fi
+           ./ports/build ${{ matrix.package }} --push ${REMOTE_BUILD_CACHE}
+           
+        env:
+            GITHUB_TOKEN: ${{ steps.token.outputs.token }}
+      - name: "Update pre-release: ${{needs.build-base-images.outputs.date}}"
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        with:
+          tag: "${{needs.build-base-images.outputs.date}}"
+          allowUpdates: true
+          draft: true
+          prerelease: true
+          token: "${{ steps.token.outputs.token }}"
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          replacesArtifacts: false
+          artifacts: "release/*.zip, release/*.git.info"
+      - name: PR artifacts
+        uses: actions/upload-artifact@v2
+        if: github.event_name != 'workflow_dispatch' && github.event_name != 'push' 
+        with:
+          name: ${{ matrix.package }}
+          path: |
+            release/*.zip
+  release:
+    needs: [buildx, legacy, build-base-images]
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Get token
+        id: token
+        run: | 
+          default_token=${{secrets.GITHUB_TOKEN}}
+          pat=${{secrets.BUILD_TOKEN}}
+          
+          if [[ -n "${pat}" ]]; then
+            echo "::set-output name=token::${pat}"
+            echo "using pat"
+          else
+            echo "::set-output name=token::${default_token}"
+            echo "using default"
+          fi
+      - name: "Publish release: ${{needs.build-base-images.outputs.date}}"
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          tag: "${{needs.build-base-images.outputs.date}}"
+          allowUpdates: true
+          draft: false
+          prerelease: false
+          token: ${{ steps.token.outputs.token }}
+          omitBodyDuringUpdate: true
+          replacesArtifacts: false
+          omitNameDuringUpdate: true
+
+      - name: "Publish pre-release: ${{needs.build-base-images.outputs.date}}"
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'push'
+        with:
+          tag: "${{needs.build-base-images.outputs.date}}"
+          allowUpdates: true
+          draft: false
+          prerelease: true
+          token: ${{ steps.token.outputs.token }}
+          omitBodyDuringUpdate: true
+          replacesArtifacts: false
+          omitNameDuringUpdate: true

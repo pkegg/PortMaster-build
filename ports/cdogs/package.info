@@ -1,0 +1,5 @@
+PKG_NAME="C-Dogs"
+PKG_VERSION="d61eae73969146c156d35a0d8c57b74507462f94"
+PKG_URL="https://github.com/cxong/cdogs-sdl.git"
+GET_HANDLER_SUPPORT="git"
+PKG_DEPENDS="oga_controls"

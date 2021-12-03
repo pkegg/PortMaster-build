@@ -1,0 +1,470 @@
+#! /bin/bash
+# Common functions used across ports
+#  - Will be copied into the package next to run.sh
+#
+# The suggested way to source this file from run.sh is:
+# -----------------------------------------------------
+# DIR="$(realpath $( dirname "${BASH_SOURCE[0]}" ))"
+# source "${DIR}/global-functions"
+# -----------------------------------------------------
+# Utilizing DIR instead of ./ means the script can be called from any directory
+#
+# All files in this script should suppport the $__ROOT_DIR variable which will default to ''.  This allows
+# creating mock environments for testing
+#
+# Functions are designed to be called in the format:
+# DEVICE=$(get_device)
+# DEV NOTE: If debug output is needed in a function, output information with `echo_err` (stderr) as
+# anything output to stdout will be included in the returned device, etc
+
+## Initialize internal global variables
+### - all should start with __ and be CAPITALIZED to avoid collisions with other globals
+### - all other variables should be local and lower case to indicate they are local
+__ROOT_DIR=""  # Allows simulating a file system
+__DEVICE=""    # Cache for detecting device as it should not change
+__OS=""        # Cache for detecting OS as it should not change 
+
+# Gets the current device:
+#  Supported devices: rg351p, rg351p (rg351m), rg351mp, oga, rk2020, ogs (same as rgb10max), chi, unknown
+function get_device() {
+
+  if [[ -z "${__DEVICE}" ]]; then
+    __DEVICE="unknown"
+    if [[ -e "${__ROOT_DIR}/dev/input/by-path/platform-ff300000.usb-usb-0:1.2:1.0-event-joystick" ]]; then
+      #anbernic rg351v and rg351p
+      if [[ -e "${__ROOT_DIR}/dev/input/by-path/platform-rg351-keys-event" ]]; then #volume buttons
+        __DEVICE="rg351v"
+      else
+        __DEVICE="rg351p"
+      fi
+    elif [[ -e "${__ROOT_DIR}/dev/input/by-path/platform-odroidgo2-joypad-event-joystick" ]]; then
+      if [[ -f "${__ROOT_DIR}/etc/emulationstation/es_input.cfg" ]] \
+         && grep -q "190000004b4800000010000001010000" "${__ROOT_DIR}/etc/emulationstation/es_input.cfg" &> /dev/null; then
+        __DEVICE="oga"
+    	else
+    	  __DEVICE="rk2020"
+    	fi
+    elif [[ -e "${__ROOT_DIR}/dev/input/by-path/platform-odroidgo3-joypad-event-joystick" ]]; then
+      if [[ -e "${__ROOT_DIR}/dev/input/by-path/platform-rg351-keys-event" ]]; then
+        __DEVICE="rg351mp"
+      else
+        __DEVICE="ogs"
+      fi
+    elif [[ -e "${__ROOT_DIR}/dev/input/by-path/platform-gameforce-gamepad-joystick" ]]; then
+      __DEVICE="chi"
+    fi
+  fi
+  echo "${__DEVICE}"
+  __DEVICE=""
+}
+
+# This is the 'param_device' to pass to oga_controls.
+# Must be one of: anbernic, chi, oga, ogs, rk2020
+function get_oga_device() {
+  local device
+  device="$(get_device)"
+  if [[ "${device}" == "rg351p" || "${device}" == "rg351v" ]]; then
+    device="anbernic"
+  elif [[ "${device}" == "rg351mp" ]]; then
+    device="ogs"
+  fi
+  echo "${device}"
+}
+
+# Gets the SDL device ID which can be used to get the SDL config from
+# the gamecontrollerdb.txt
+# See: get_controls
+function get_sdl_device_id() {
+  local oga_device
+  local device_id=unknown
+  oga_device="$(get_oga_device)"
+
+  if [[ "${oga_device}" == "anbernic" ]]; then
+    device_id="03000000091200000031000011010000"
+  elif [[ "${oga_device}" == "oga" ]]; then
+    device_id="190000004b4800000010000001010000"
+  elif [[ "${oga_device}" == "rk2020" ]]; then
+    device_id="190000004b4800000010000000010000"
+  elif [[ "${oga_device}" == "ogs" ]]; then
+    device_id="190000004b4800000011000000010000"
+  elif [[ "${oga_device}" == "chi" ]]; then
+    device_id="19000000030000000300000002030000"
+  fi
+  echo "$device_id"
+}
+
+# Gets the SDL controls for the device from gamecontrollerdb.txt
+# Suggested usage: SDL_GAMECONTROLLERCONFIG="$(get_sdl_controls)"
+function get_sdl_controls() {
+  local device_id
+  local controls
+  local sdldbuserfile="${HOME}/.config/SDL-GameControllerDB/gamecontrollerdb.txt"
+  local sdldbfile="$DIR/gamecontrollerdb.txt"
+  device_id=$(get_sdl_device_id)
+
+  controls=$(grep "${sdldbuserfile}" -e "${device_id}")
+  if [[ -z "${controls}" ]]; then
+    controls=$(grep "${sdldbfile}" -e "${device_id}")
+  fi
+  echo "${controls}"
+}
+
+# Gets the current OS
+#  Options: ArkOS, 351ELEC, TheRA, RetroOZ, ubuntu, mac, unknown
+#  NOTE: ubuntu (and mac) is to be used as fallback for testing off-device (mostly applicable for portmaster)
+function get_os() {
+  if [[ -z "$__OS" ]]; then
+    __OS="unknown"
+    if [[ -f "${__ROOT_DIR}/boot/rk3326-rg351v-linux.dtb" || -d "${__ROOT_DIR}/opt/system/Advanced/" ]]; then
+      __OS="ArkOS"
+    elif [[ -e "${__ROOT_DIR}/storage/.config/.OS_ARCH" ]]; then
+      __OS="351ELEC"
+    elif [[ -e "${__ROOT_DIR}/usr/share/plymouth/themes/text.plymouth" \
+            && $(grep "title=" "${__ROOT_DIR}/usr/share/plymouth/themes/text.plymouth") == *"TheRA"* ]]; then
+      __OS="TheRA"
+    elif [[ -e "${__ROOT_DIR}/opt/.retrooz/device" ]]; then
+      __OS="RetroOZ"
+    elif grep -q "ID=ubuntu" ${__ROOT_DIR}/etc/os-release &> /dev/null; then
+      __OS="ubuntu"
+    elif [[ $OSTYPE == 'darwin'* ]]; then
+      __OS="mac"
+    fi
+  fi
+  echo "${__OS}"
+  __OS=""
+}
+
+# Whether to use sudo
+function get_sudo() {
+  local os
+  os="$(get_os)"
+  if [[ "${os}" == "351ELEC" ]]; then
+    echo ""
+  elif which sudo &> /dev/null; then
+    echo "sudo"
+  else
+    echo ""
+  fi
+}
+
+function get_sudo_kill() {
+  local sudo
+  sudo="$(get_sudo)"
+  local sudokill
+  if [[ "$sudo" == "sudo" ]]; then
+    sudokill="-sudokill" # for ArkOS use "-sudokill"
+  else
+    sudokill="-1" # for EmuELEC use "-1" (numeric one) or "-k" 
+  fi
+  echo "$sudokill"
+}
+
+function is_low_res() {
+  local low_res="N"
+  local device
+  device="$(get_device)"
+  if [[ "$device" == "rg351p" || "$device" == "oga" || "$device" == "rk2020" ]]; then
+    low_res="Y"
+  fi
+  echo "${low_res}"
+}
+
+function get_num_analog_sticks() {
+  local analog_sticks="2"
+  local device
+  device="$(get_device)"
+  if [[  "$device" == "rg351v" || "$device" == "oga" || "$device" == "rk2020" ]]; then
+    analog_sticks="1"
+  fi
+  echo "${analog_sticks}"
+}
+
+#TODO: understand why this is sometimes 'roms' dir
+function get_tools_dir() {
+  os=$(get_os)
+  local toolsfolderloc="${__ROOT_DIR}/roms/ports"
+  if [[ "351ELEC" == "${os}" ]]; then
+    toolsfolderloc="${__ROOT_DIR}/storage/roms/ports"
+  elif [[ "TheRA" == "${os}" ]]; then
+    if [ -d "/opt/tools/PortMaster/" ]; then
+      toolsfolderloc="${__ROOT_DIR}/opt/tools"
+    else
+      toolsfolderloc="${__ROOT_DIR}/roms/ports"
+    fi
+  elif [[ "ArkOS" == "${os}" ]]; then
+    toolsfolderloc="${__ROOT_DIR}/opt/tools"
+    if [ -d "/opt/system/Tools/PortMaster/" ]; then
+      toolsfolderloc="${__ROOT_DIR}/opt/system/Tools"
+    else
+      toolsfolderloc="${__ROOT_DIR}/roms/ports"
+    fi
+  elif [[ "mac" == "${os}" ]]; then
+    toolsfolderloc="${__ROOT_DIR}/var/tmp/portmaster/ports"
+  fi
+  echo "${toolsfolderloc}"
+}
+
+function get_roms_dir() {
+  local os
+  os=$(get_os)
+  local romsfolderloc="${__ROOT_DIR}/opt/roms"
+  if [[ "351ELEC" == "${os}" ]]; then
+    romsfolderloc="${__ROOT_DIR}/storage/roms/"
+  elif [[ "TheRA" == "${os}" ]]; then
+    romsfolderloc="${__ROOT_DIR}/opt/system/Roms"
+  elif [[ "ArkOS" == "${os}" ]]; then
+    romsfolderloc="${__ROOT_DIR}/$(get_arkos_roms_dir_name)"
+  elif [[ "mac" == "${os}" ]]; then
+    romsfolderloc="${__ROOT_DIR}/var/tmp/portmaster/roms"
+  fi
+  echo "${romsfolderloc}"
+}
+
+function get_arkos_roms_dir_name() {
+  local dir_name="roms"
+  if [[ -f "/opt/system/Advanced/Switch to main SD for Roms.sh" ]]; then
+    dir_name="roms2"
+  fi
+  echo "${dir_name}"
+}
+
+function get_ports_dir() {
+  echo "$(get_roms_dir)/ports"
+}
+
+function get_console() {
+  local os
+  os=$(get_os)
+  local console="/dev/tty0"
+
+  #Allows someone to override the console manually.  Ex: export CONSOLE=/dev/stdout
+  if [[ -n "${CONSOLE:-}" ]]; then
+    console="${CONSOLE}"
+  elif [[ "ubuntu" == "${os}" || "unknown" == "${os}" || "mac" == "${os}" ]]; then
+    console="/dev/stdout"
+  fi
+  echo "${console}"
+}
+
+function get_hotkey() {
+  local hotkey="Select"
+  local device
+  device="$(get_device)"
+
+  if [[ "${device}" == "oga" || "${device}" == "chi" ]]; then
+    hotkey="l3"
+  fi
+  echo "${hotkey}"
+}
+
+function get_grep() {
+  local grep="grep"
+  if [[ "$(get_os)" == "mac" ]]; then
+    grep="ggrep"
+  fi
+  echo "${grep}"
+}
+function get_wget() {
+   echo "wget"
+}
+function in_china() {
+  local grep
+  grep=$(get_grep)
+  ISITCHINA=$(curl -s --connect-timeout 30 -m 60 http://demo.ip-api.com/json | ${grep} -Po '"country":.*?[^\\]"' )
+  local in_china=false
+  if [[ "$ISITCHINA" == "\"country\":\"China\"" ]]; then
+    in_china=true
+  fi
+  echo "${in_china}"
+}
+
+# outputs to stderr
+function echo_err() {
+  echo "$@" 1>&2;
+}
+
+__RUN_AT_EXIT=""
+#This is a convenient way to add code to run whenever the program exits.  Without coordinating, only one 'trap' can
+# be registered at a time for a given exit code
+function run_at_exit() {
+  command="$1"
+
+  if [[ -n "${__RUN_AT_EXIT}" ]]; then
+    __RUN_AT_EXIT="${__RUN_AT_EXIT};${command}"
+  else
+    __RUN_AT_EXIT="${command}"
+  fi
+  trap -- "${__RUN_AT_EXIT}" EXIT
+}
+
+# does any cleanup that may be needed when launching
+function oga_exit() {
+  set +e
+  
+  local esudo
+  esudo=$(get_sudo)
+  local console
+  console=$(get_console)
+  local oga_pid
+  oga_pid=$(pidof oga_controls)
+  if [[ -n "${oga_pid}" ]]; then
+    $esudo kill -9 "${oga_pid}"
+  fi
+  if systemctl list-units --full --all | grep -Fq "oga_events.service"; then
+    echo_err "restarting oga"
+    $esudo systemctl restart oga_events &
+  else
+    echo_err "oga_events service does not exist"
+  fi
+  console_clear
+}
+
+#This function makes it easier to launch (and cleanup) with oga_controls
+# NOTE: Current directory **must** contain oga_controls and the executable to launch
+function launch_with_oga_controls() {
+
+  local to_launch="$1"
+  local param_device
+  param_device="$(get_oga_device)"
+  local esudo
+  esudo="$(get_sudo)"
+
+  if [[ -e "/dev/uinput" ]]; then
+    $esudo chmod 666 /dev/uinput
+  else
+    echo_err "/dev/uinput not found"
+  fi
+
+  $esudo $DIR/oga_controls $to_launch $param_device &
+  if [[ -x "./$to_launch" ]]; then
+    $esudo "./$to_launch" 2>&1 | tee -a ./log.txt
+  else
+    echo_err "No executable found: ${to_launch}"
+  fi
+  run_at_exit "oga_exit"
+}
+
+function initialize_permissions() {
+  local esudo
+  local os
+  local console
+  esudo="$(get_sudo)"
+  os="$(get_os)"
+  console="$(get_console)"
+
+  #ensure directories are created
+  local romsdir
+  romsdir="$(get_roms_dir)"
+  local toolsdir
+  toolsdir="$(get_tools_dir)" 
+  $esudo mkdir -p "$romsdir" "$toolsdir"
+  
+  if [[ "${console}" != "/dev/stdout" ]]; then
+    $esudo chmod 666 "${console}"
+  fi
+}
+
+function install_package() {
+  local package="$1"
+  local brew_package="${2:-}"
+  local esudo="$(get_sudo)"
+  if [[ -z "${brew_package}" ]]; then
+    brew_package="$package"
+  fi
+  if ! check_package "$package" "$brew_package"; then
+    if [[ "$(get_os)" == "mac" ]]; then
+        if ! which brew &> /dev/null; then
+          echo "'brew' required on Mac to install packages. Please install brew: https://brew.sh/"
+          exit 1
+        fi
+        echo "${brew_package} required.  Installing with brew..."
+        brew install ${brew_package}
+    else
+        echo "${package} required.  Installing with apt..."
+        $esudo apt update && $esudo apt install -y $package --no-install-recommends
+    fi
+  fi
+}
+function check_package() {
+  local package="$1"
+  local brew_package="${2:-}"
+  if [[ -z "${brew_package}" ]]; then
+    brew_package="$package"
+  fi
+  if [[ "$(get_os)" == "mac" ]]; then
+    package="$brew_package"
+  fi
+  if ! which "$package" &> /dev/null; then
+      return 1
+  fi
+  
+  return 0
+}
+
+function is_network_connected() {
+  local gateway
+  local os="$(get_os)"
+  if [[ "$os" == "mac" ]] && ! which ip &> /dev/null; then
+    install_package "ip" "iproute2mac"
+  fi
+  gateway=$(ip route | awk '/default/ { print $3 }')
+  if [ -z "$gateway" ]; then
+    return 1
+  fi
+  return 0
+}
+
+function console_clear() {
+  local console
+  console="$(get_console)"
+  if [[ "${IS_TEST_MODE:-}" != "true" ]]; then
+    printf "\033c" >> "${console}"
+  fi
+}
+
+function get_github_org() {
+
+  local org="__GITHUB_ORG__"
+
+  #fallback - shouldn't be used if __GITHUB_ORG__ is replaced
+  if [[ "${org}" == __* ]]; then
+    org="pkegg"  #This can be switched to christianhaitian if merged
+  fi
+  echo "${org}"
+}
+function get_github_repo() {
+
+  local repo="__GITHUB_REPO__"
+
+  #fallback - shouldn't be used if __GITHUB_ORG__ is replaced
+  if [[ "${repo}" == __* ]]; then
+    repo="PortMaster-build"
+  fi
+  echo "${repo}"
+}
+
+
+#The below code only runs when this file is executed (not sourced)
+#  Ex:  Please run `bash ./global-functions` and give us the output
+# It's meant to help debugging on devices and should have output to help debug
+# each function in this file.
+#
+# Output format currently allows being sourced by bash as variables as this might
+# be useful in the future
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "OS=$(get_os)"
+  echo "DEVICE=$(get_device)"
+  echo "TOOLSDIR=$(get_tools_dir)"
+  echo "ROMSDIR=$(get_roms_dir)"
+  echo "PORTSDIR=$(get_ports_dir)"
+  echo "CONSOLE=$(get_console)"
+  echo "HOTKEY=$(get_hotkey)"
+  echo "GREP=$(get_grep)"
+  echo "IN_CHINA=$(in_china)"
+  echo "OGA_DEVICE=$(get_oga_device)"
+  echo "SDL_DEVICE_ID=$(get_sdl_device_id)"
+  echo "GITHUB_ORG=$(get_github_org)"
+  echo "IS_LOW_RES=$(is_low_res)"
+  echo "NUM_ANALOG_STICKS=$(get_num_analog_sticks)"
+
+fi

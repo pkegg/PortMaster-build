@@ -1,0 +1,3 @@
+PKG_NAME="Blobby Volley 2"
+PKG_ZIP_NAME_OVERRIDE="Blobby Volley2"
+LEGACY_PORTMASTER="true"

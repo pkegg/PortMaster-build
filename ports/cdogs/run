@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+# Current directory of the script
+DIR="$(realpath $( dirname "${BASH_SOURCE[0]}" ))"
+
+source "${DIR}/control.txt"
+
+ESUDO="$(get_sudo)"
+
+if [[ ! -f "${DIR}/conf/cdogs-sdl/options.cnf" ]]; then
+  config_type=480 #oga, rk2020, rg351p
+  if [[ "${LOWRES}" == "N" ]]; then
+    config_type=640
+  fi
+  mv -f "${DIR}/conf/cdogs-sdl/options.cnf.${config_type}" "${DIR}/conf/cdogs-sdl/options.cnf"
+  rm -f ${DIR}/conf/cdogs-sdl/options.cnf.*
+fi
+
+$ESUDO  rm -rf ~/.config/cdogs-sdl
+ln -sfv "${DIR}/conf/cdogs-sdl/" ~/.config/
+
+cd "${DIR}/data"
+export SDL_GAMECONTROLLERCONFIG="$(get_controls)"
+./cdogs-sdl

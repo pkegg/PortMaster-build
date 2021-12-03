@@ -1,0 +1,66 @@
+#!/bin/bash
+set -e
+DIR="$(realpath $( dirname "${BASH_SOURCE[0]}" ))"
+
+
+function parse_args() {
+  PACKAGE=""
+  CLEAN_CCACHE="false"
+
+  # Parse args
+  ARGS=()
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+  
+    case $key in
+      -c|--clean-ccache)
+        CLEAN_CCACHE=true
+        shift
+        ;;
+      -h|--help)
+        echo "$0 <package> [arguments]"
+        echo "  --remove-ccache (-c) - removes the default .ccache directory underneath the packages directory"
+        exit 1
+        ;;
+      -*|--*)
+        echo "Unknown option: $1"
+        shift #past argument
+        ;;
+      *)    # unknown option
+        if [[ -z "${PACKAGE}" ]]; then
+          PACKAGE="${1%/}"
+          if [[ -d "${PACKAGE}" ]]; then
+            PACKAGE="$(basename ${PACKAGE})"
+          fi
+        else
+          echo "Unknown argument: $1"
+          ARGS+=("$1") # save it in an array for later
+        fi
+        shift
+        ;;
+    esac
+  done
+  if [[ -z "${PACKAGE}" ]]; then
+    echo "Please provide port to build. Ex: $0 smw"
+    exit 1
+  fi
+  if [[ ! -d "${DIR}/${PACKAGE}" ]]; then
+    echo "Please provide a port which exists in the ports directory. ${DIR}/${PACKAGE} does not exist."
+    exit 1
+  fi
+}
+parse_args "$@"
+
+rm -rf "${DIR}/${PACKAGE}/source"
+rm -rf "${DIR}/${PACKAGE}/pkg"
+rm -rf "${DIR}/${PACKAGE}/clone-source"
+rm -rf "${DIR}/${PACKAGE}/Dockerfile.build"
+source "${DIR}/${PACKAGE}/package.info"
+
+rm -rf "${DIR}/../release/${PKG_NAME}.git.info"
+rm -rf "${DIR}/../release/${PKG_NAME}.zip"
+if [[ $CLEAN_CCACHE == "true" && -d "${DIR}/${PACKAGE}/.ccache" ]]; then
+  echo "cleaning ccache"
+  rm -rf "${DIR}/${PACKAGE}/.ccache"
+fi
+echo "done"

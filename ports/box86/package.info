@@ -1,0 +1,10 @@
+PKG_NAME="box86"
+PKG_LIBRARY="true"
+PKG_URL="https://github.com/ptitSeb/box86"
+PKG_VERSION="b5203b97bb37c4e51e7655e7e244b71aefce0de0"
+PKG_DEPENDS=gl4es
+BUILD_PLATFORM=linux/arm/v7
+GET_HANDLER_SUPPORT="git"
+
+# This is still a work in progress - so don't include in `./build-all`
+BUILD_ALL=false

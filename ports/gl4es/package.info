@@ -1,0 +1,8 @@
+PKG_NAME="gl4es"
+PKG_LIBRARY="true"
+PKG_URL=https://github.com/ptitSeb/gl4es
+PKG_VERSION="b2d42913871f3c31ff69b243789e5a451f59b44b"
+BUILD_PLATFORM=linux/arm/v7
+
+# This is still a work in progress - so don't include in `./build-all`
+BUILD_ALL=false
