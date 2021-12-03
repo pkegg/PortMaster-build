@@ -362,8 +362,7 @@ function build_package() {
         pushd "${PACKAGE_DIR}" &> /dev/null
         # Get .env file ready
         env | grep -E "$ENV_OPTIONS" | grep "=" > .env
-        echo ${SUDO} ${DOCKER_CMD} run --platform ${TEST_PLATFORM} ${INTERACTIVE} --env-file .env --rm --user ${UID}:"${GID}" -v "$(realpath ${PACKAGE_DIR}/..):${DOCKER_WORK_DIR}" -w "${DOCKER_WORK_DIR}/${PACKAGE}" ${DOCKER_IMAGE} bash -e ./test
-        exit 1
+        ${SUDO} ${DOCKER_CMD} run --platform=${TEST_PLATFORM} ${INTERACTIVE} --env-file .env --rm --user ${UID}:"${GID}" -v "$(realpath ${PACKAGE_DIR}/..):${DOCKER_WORK_DIR}" -w "${DOCKER_WORK_DIR}/${PACKAGE}" ${DOCKER_IMAGE} bash -e ./test
         popd &> /dev/null
     fi
     echo "test done"
