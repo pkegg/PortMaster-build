@@ -1,0 +1,58 @@
+#! /bin/bash
+set -e
+if ! which docker &> /dev/null; then
+  if which apt &> /dev/null; then
+    echo "Attempting to install docker.  If you do not want this.  Install manually from https://docs.docker.com/engine/install/"
+    sudo apt update
+    sudo apt install docker.io -y
+  else
+    echo "Please install docker.  It is suggested to install docker from https://docs.docker.com/engine/install/"
+  exit 1
+  fi
+fi
+
+if ! groups | grep -q docker; then
+  echo "adding docker group to this user" 
+  sudo usermod -aG docker $USER
+  echo "Added 'docker' group to this user"
+  echo "ERROR: You must re-login or run: newgrp docker"
+  echo "  Then rerun this script"
+  exit 1
+fi  
+
+if ! docker ps -q &> /dev/null; then
+  echo "Something seems wrong.  This command does not work: docker ps"
+  echo "Please ensure that you can access docker without sudo"
+  echo "You may need to follow the instructions here (and reboot) or start docker service: https://docs.docker.com/engine/install/linux-postinstall/"
+  exit 1
+fi
+BUILDX_RELEASE=v0.7.0
+
+if ! docker buildx &> /dev/null; then
+  if ! which curl &> /dev/null; then
+     if which apt &> /dev/null; then
+       echo "Installing curl..."
+       sudo apt update
+       sudo apt install curl -y
+     else
+       echo "curl is required to install buildx" 
+       echo "please install curl"
+       exit 1
+     fi
+  fi
+  CLI_PLUGIN_DIR="$(realpath ~/)/.docker/cli-plugins"
+  BUILDX_BIN="${CLI_PLUGIN_DIR}/docker-buildx"
+
+  mkdir -p ${CLI_PLUGIN_DIR}
+  curl -L -o "${BUILDX_BIN}" https://github.com/docker/buildx/releases/download/${BUILDX_RELEASE}/buildx-${BUILDX_RELEASE}.linux-amd64
+  chmod +x "${BUILDX_BIN}" 
+fi
+
+if [[ ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
+  docker run --rm --privileged tonistiigi/binfmt:latest --install all
+fi 
+
+if ! docker buildx ls | grep -q portmaster-remote-builder; then
+  docker buildx create --name portmaster-remote-builder --driver docker-container
+fi
+
