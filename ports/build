@@ -66,6 +66,7 @@ function github_api() {
 }
 function _github_call() {
   local apiUrl="$GITHUB_API_URL/$1"
+  local cacheUrl="$1"
   local accept_header="$2"
   local headers=""
   set +e
@@ -74,7 +75,7 @@ function _github_call() {
   fi
   
   local return_code
-  cache_file="$CACHE_DIR/${apiUrl}"
+  local cache_file="$CACHE_DIR/${cacheUrl}"
   cache_dir="$(dirname "$cache_file")"
   mkdir -p "${cache_dir}"
 
