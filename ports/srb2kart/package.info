@@ -1,5 +1,5 @@
 PKG_NAME="Sonic Robo Blast 2 Kart"
 PKG_ZIP_NAME_OVERRIDE="srb2kart"
 LEGACY_PORTMASTER="true"
-LEGACY_URL_OVERRIDE="https://github.com/pkegg/PortMaster-Hosting/releases/download/large-files/srb2kart.zip"
+LEGACY_URL_OVERRIDE="$GITHUB_URL/pkegg/PortMaster-Hosting/releases/download/large-files/srb2kart.zip"
 PKG_SHA256="6ece6fd11f44e1390de7d76420fd2a451884727e13f14ce6a27e17592eb11400"

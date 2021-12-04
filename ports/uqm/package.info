@@ -1,7 +1,7 @@
 PKG_NAME="UQM"
 PKG_DIRECTORY_OVERRIDE="UQM"
 LEGACY_PORTMASTER="true"
-LEGACY_URL_OVERRIDE="https://github.com/pkegg/PortMaster-Hosting/releases/download/large-files/UQM.zip"
+LEGACY_URL_OVERRIDE="$GITHUB_URL/pkegg/PortMaster-Hosting/releases/download/large-files/UQM.zip"
 
 #PKG_SHA256 is required
 PKG_SHA256="5af914bbbdcccd6c1368b3ddbbc07c544f415f55b28ad94085e2ce3860801483"

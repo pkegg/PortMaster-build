@@ -2,6 +2,12 @@ LEGACY_PORTMASTER_ORG=christianhaitian
 LEGACY_PORTMASTER_REPO=PortMaster
 LEGACY_PORTMASTER_BRANCH=main
 
+if [[ -n "${GITHUB_TOKEN}" ]]; then
+  GITHUB_URL=https://${GITHUB_TOKEN}@github.com
+else
+  GITHUB_URL=https://github.com
+fi
+
 GITHUB_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 #This needs to work for both: https://github.com/<org>/PortMaster and git@github.com:<org>/PortMaster.git

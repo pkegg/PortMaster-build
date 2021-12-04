@@ -95,7 +95,12 @@ function clone_source() {
     if already_downloaded "${DOWNLOAD_FILE}" "${PKG_SHA}" "${DOWNLOAD_FILE_SHA}"; then
       echo "File: ${DOWNLOAD_FILE} already downloaded and matching ${SHA_TYPE}"
     else
-      echo "Downloading file: ${PKG_URL}"
+      #Don't output the GITHUB_TOKEN
+      SANITIZED_URL=${PKG_URL}
+      if [[ -n "${GITHUB_TOKEN}" ]]; then
+        SANITIZED_URL=$(echo ${PKG_URL} | sed "s|${GITHUB_TOKEN}|xxxxxx|g")
+      fi
+      echo "Downloading file: $(echo ${SANITIZED_URL})"
       if download_file "${PKG_URL}" "${DOWNLOAD_FILE}" "${DOWNLOAD_FILE_SHA}"; then
         echo "File downloaded successfully"
         calculated_sha=$(get_sha "${DOWNLOAD_FILE}" "${SHA_TYPE}")
@@ -156,14 +161,14 @@ function download_file() {
   rm -rf "${download_file_location}"
   rm -rf "${download_file_sha256_location}"
 
-  WGET_OPT="--output-file=- --timeout=30 --tries=3 --passive-ftp --no-check-certificate -c -q --progress=bar:force --show-progress" #Could make configurable in future
-  if wget --header="$GITHUB_AUTH"  ${WGET_OPT}  -O "${download_file_location}" "${download_url}"; then
+  WGET_OPT="--timeout=30 --tries=3 --passive-ftp --no-check-certificate -c -q --progress=bar:force --show-progress" #Could make configurable in future
+  if wget ${WGET_OPT}  -O "${download_file_location}" "${download_url}"; then
     return 0
   else
     echo "Issue with download...retrying in 10 seconds..."
     
     sleep 10
-    if wget --header="$GITHUB_AUTH"  ${WGET_OPT}  -O "${download_file_location}" "${download_url}"; then
+    if wget ${WGET_OPT}  -O "${download_file_location}" "${download_url}"; then
       return 0
     fi
   fi

@@ -1,4 +1,4 @@
 PKG_NAME="SuperTux"
 LEGACY_PORTMASTER="true"
-LEGACY_URL_OVERRIDE="https://github.com/pkegg/PortMaster-Hosting/releases/download/large-files/SuperTux.zip"
+LEGACY_URL_OVERRIDE="$GITHUB_URL/pkegg/PortMaster-Hosting/releases/download/large-files/SuperTux.zip"
 PKG_SHA256="4a26748eccead9c133d7b7cb9c0dd1c37b3905bf9c4e999f37e7863acd986b75"
