@@ -908,6 +908,9 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       echo "Not creating a main: ${PKG_NAME}.sh script due to PKG_NO_MAIN_SCRIPT=true"
     elif [[ "${PKG_LIBRARY}" == "true" ]]; then
       echo "Not creating a main: ${PKG_NAME}.sh script as PKG_LIBRARY=true"
+    elif [[ -f "${PACKAGE_DIR}/${PKG_NAME}.sh" ]]; then
+      echo "Utilizing ${PKG_NAME}.sh for main script"
+      cp "${PACKAGE_DIR}/${PKG_NAME}.sh" "${MAIN_SCRIPT_LOCATION}"
     elif [[ -f "${PACKAGE_DIR}/run-legacy" ]]; then
       echo "Utilizing run-legacy for main script"
       cp "${PACKAGE_DIR}/run-legacy" "${MAIN_SCRIPT_LOCATION}"
