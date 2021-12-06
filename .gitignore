@@ -9,6 +9,8 @@
 **/bld
 **.log
 **/pkg.zip
+**/pkg.xz*
+**/pkg.tar*
 **/pkg.zip.sha256
 **/pkg.zip.git.sha
 **/package.legacy.info
