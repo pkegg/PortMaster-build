@@ -201,4 +201,4 @@ There may be additional simplification of control.txt as well.
 
 In these cases, `global-functions` can help.  Basically,`global-functions` can be sourced without any change and then has individual methods for things like `get_os`, `get_device`, etc.  These functions contain either *no* global variables or variables that start with `__` so they are unlikely to be inadvertantly used by other scripts.  Tests can be written in [bats](https://github.com/bats-core/bats-core) to ensure tricky things like device/OS detection are correct once verified.
 
-See documentation in [portmaster](../ports/portmaster/README.md) and [global](../ports/global/README.md)
+See documentation in [portmaster](./ports/portmaster-refactor/README.md) and [global](./ports/global/README.md)
