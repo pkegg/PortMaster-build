@@ -11,6 +11,7 @@ function parse_args() {
   DO_BUILD="true"
   BUILD_SPLIT_TOTAL=""
   BUILD_SPLIT=""
+  SHOW_NAME=""
 
   # Parse args
   ARGS=()
@@ -38,6 +39,10 @@ function parse_args() {
         DO_BUILD="false"
         shift # past argument
         ;;
+      --show-name*)
+        SHOW_NAME="true"
+        shift # past argument
+        ;;
       --build-shard-total)
         BUILD_SPLIT_TOTAL="$2"
         shift # past argument
@@ -56,6 +61,7 @@ function parse_args() {
         echo "  --legacy-override-url - lists all LEGACY_PORTMASTER=true which have a LEGACY_URL_OVERRIDE"
         echo "  --builds - lists all non-legacy builds"
         echo "  --no-builds - just output the list of builds which would be run"
+        echo "  --show-name - outputs PKG_NAME instead of the directory name.  Useful with --no-builds"
         echo "  --build-shard-total - the total number to shard the jobs into - used with --build-shard to only build a subset of builds"
         echo "  --build-shard - the specific shards (modulus) to run.  Starts from 1.  Ex: --build-shard-total=5 and --build-shard=1 the first of each 5 builds will be run" 
 
@@ -89,17 +95,27 @@ for directory in ${DIR}/*/; do
     LEGACY_URL_OVERRIDE=""
     LEGACY_PORTMASTER=""
     BUILD_ALL=""
+    PKG_ZIP_NAME_OVERRIDE=""
     source "${directory}/package.info"
 
     if [[ "${BUILD_ALL}" == "false" ]]; then
       continue
     fi
     TO_BUILD="$(basename ${directory})"
+    TO_BUILD_NAME=$TO_BUILD
+    if [[ "${SHOW_NAME}" == "true" ]]; then
+      TO_BUILD_NAME="$PKG_NAME"
+      if [[ -n "${PKG_ZIP_NAME_OVERRIDE}" ]]; then
+      
+         TO_BUILD_NAME="$PKG_ZIP_NAME_OVERRIDE"
+      fi
+      
+    fi
     DEFAULT=true
     if [[ "${LEGACY_PORTMASTER_OVERRIDE}" == "true" ]]; then
        DEFAULT=false
        if [[ -n "${LEGACY_URL_OVERRIDE}" &&  "${LEGACY_PORTMASTER}" == "true" ]]; then
-          echo "${TO_BUILD}"
+          echo "${TO_BUILD_NAME}"
           if [[ "${DO_BUILD}" == "true" ]]; then
             ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
           fi
@@ -109,7 +125,7 @@ for directory in ${DIR}/*/; do
        DEFAULT=false
 
        if [[ -z "${LEGACY_URL_OVERRIDE}" &&  "${LEGACY_PORTMASTER}" == "true" ]]; then
-          echo "${TO_BUILD}"
+          echo "${TO_BUILD_NAME}"
           if [[ "${DO_BUILD}" == "true" ]]; then
             ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
           fi
@@ -119,7 +135,7 @@ for directory in ${DIR}/*/; do
        DEFAULT=false
 
        if [[ -n "${PKG_URL}" &&  "${LEGACY_PORTMASTER}" != "true" &&  "${PKG_LIBRARY}" != "true" ]]; then
-          echo "${TO_BUILD}"
+          echo "${TO_BUILD_NAME}"
           if [[ "${DO_BUILD}" == "true" ]]; then
             ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
           fi
@@ -128,7 +144,7 @@ for directory in ${DIR}/*/; do
     if [[ "${LIBRARIES}" == "true" ]]; then
       DEFAULT=false
       if [[ "${PKG_LIBRARY}" == "true" ]]; then
-        echo "${TO_BUILD}"
+        echo "${TO_BUILD_NAME}"
         if [[ "${DO_BUILD}" == "true" ]]; then
           ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
         fi
@@ -137,7 +153,7 @@ for directory in ${DIR}/*/; do
     
     
     if [[ "${DEFAULT}" == "true" && "${PKG_LIBRARY}" != "true" ]]; then
-      echo "${TO_BUILD}"
+      echo "${TO_BUILD_NAME}"
       if [[ "${DO_BUILD}" == "true" ]]; then
         ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
       fi
