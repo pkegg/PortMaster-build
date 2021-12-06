@@ -61,6 +61,13 @@ function clone_source() {
       git submodule update --init --recursive
       echo "Cleaning ($(pwd))..."
       git clean -fd
+      if [[ -z "${PKG_VERSION}" ]]; then
+        echo "ERROR: PKG_VERSION must be set when using a git PKG_URL"
+        echo "  If you want the latest, use: PKG_VERSION=\"$(git rev-parse HEAD)\""
+        echo "  -------------------------------------------------------------------"
+        echo "  Git Info: $(git log -1)"
+        exit 1
+      fi
       echo "Checking out: ${PKG_VERSION}"
       git checkout "${PKG_VERSION}"
       popd &> /dev/null || return
