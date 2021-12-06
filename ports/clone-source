@@ -24,8 +24,9 @@ function clone_source() {
   GET_HANDLER_SUPPORT=""
   PKG_VERSION=""
   PKG_URL=""
+  LEGACY_PORTMASTER=""
   source "${PACKAGE_INFO}"
-  if [[ -f "${PACKAGE_INFO_LEGACY}" ]]; then
+  if [[ "$LEGACY_PORTMASTER" == "true" && -f "${PACKAGE_INFO_LEGACY}" ]]; then
     source "${PACKAGE_INFO_LEGACY}"
   fi
   if [[ -z "${GET_HANDLER_SUPPORT}" ]]; then
