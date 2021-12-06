@@ -1,0 +1,5 @@
+echo "build!"
+source ../package.info
+echo "ex: ${UTILLINUX_CONFIG_DEFAULT}"
+./configure --disable-all-programs --enable-fallocate
+make -j$(nproc)
