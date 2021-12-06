@@ -1,2 +1,4 @@
-PKG_NAME="alephone-marathon2"
+PKG_NAME="Marathon 2"
 LEGACY_PORTMASTER="true"
+PKG_ZIP_NAME_OVERRIDE="alephone-marathon2"
+PKG_DIRECTORY_OVERRIDE="alephone"
