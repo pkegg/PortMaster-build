@@ -86,8 +86,9 @@ function clone_source() {
       PKG_TYPE="${url_file_name##*.}"
     fi
 
-    if [[ "$PKG_TYPE" != "zip" ]]; then
-      echo "PKG_TYPE other than zip: (${PKG_TYPE}) is not currently supported"
+    if [[ "$PKG_TYPE" != "zip" &&  "$PKG_TYPE" != "xz" ]]; then
+
+      echo "PKG_TYPE other than zip or tar.*: (${PKG_TYPE}) is not currently supported"
     fi
     local DOWNLOAD_FILE="${PACKAGE_DIR}/pkg.${PKG_TYPE}"
     local DOWNLOAD_FILE_SHA="${DOWNLOAD_FILE}.${SHA_TYPE}"
@@ -138,6 +139,14 @@ function unpack() {
     rm -rf "${unpack_dir}"
     echo "Unzipping into: ${unpack_dir}"
     unzip "${unpack_file}" -d "${unpack_dir}"
+  elif [[ "${unpack_type}" == "xz" ]]; then
+    echo "Removing existing directory: ${unpack_dir}"
+    rm -rf "${unpack_dir}"
+    mkdir -p "${unpack_dir}"
+    pushd "${unpack_dir}"
+    echo "Untarring ${unpack_file} to: ${unpack_dir}"
+    tar --strip-components=1  -xvf "${unpack_file}"
+    popd
   fi
 
 }

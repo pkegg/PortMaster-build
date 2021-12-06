@@ -271,7 +271,7 @@ function build_package() {
   if [[ ! -d "${SOURCE_DIR}" ]]; then
     SOURCE_DIR="${PACKAGE_DIR}"
     SOURCE_DOCKER_DIR=""
-    BUILD_DIR="."
+    BUILD_DIR="$(realpath .)"
     mkdir -p "${SOURCE_DIR}"
   fi
   if [[ "$INSTALL_DEPS" == "true" && -f "${PACKAGE_DIR}/install-deps" ]]; then
