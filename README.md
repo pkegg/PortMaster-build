@@ -1,6 +1,5 @@
 # PortMaster-build
-This repository creates build process for PortMaster that allows for repeatable, standardized builds on multiple platforms.
-
+This repository creates build process for PortMaster that allows for repeatable, standardized builds and reuse of libraries/code across ports.
 
 # tl;dr - build a port - docker
 - Install [docker](https://docs.docker.com/get-docker/) on linux/mac/wsl2.
