@@ -1,0 +1,3 @@
+cp -r source/data/* pkg
+cp source/build/supertux2 pkg
+cp files/* pkg
