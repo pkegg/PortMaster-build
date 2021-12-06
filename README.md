@@ -1,6 +1,7 @@
 # PortMaster-build
 This repository creates build process for PortMaster that allows for repeatable, standardized builds on multiple platforms.
 
+
 # tl;dr - build a port - docker
 - Install [docker](https://docs.docker.com/get-docker/) on linux/mac/wsl2.
   - `apt-get install docker.io` works on Ubuntu 20.04+ on linux.
@@ -25,6 +26,13 @@ This repository creates build process for PortMaster that allows for repeatable,
 - **Deduplication** - Build should support duplication of code from ports (examples: copy `control.txt` into all ports, setup global functions for ports, centralize device detection, deduplicate box86 and other libraries, etc)
 - **Testable** - It should be possible to run automated tests (`bats`, etc) during build.
  
+# GitHub Actions Builds
+Builds run in GitHub Actions automatically on commits to `main` and for `PR`'s.
+
+In order to speed up builds and prepare for a lot of custom builds in the future, it uses multiple builds to parallelize.
+
+See: [build-parallel.yaml](.github/workflows/build-parallel.yaml)
+
 # Build Scripts Overview
 The build uses docker buildx to provide the dependencies and the docker+qemu emulation needed to run builds for arm/arm64 platforms.  Builds are smart enough to only rebuild if changed.  Having a build system means port builds are repeatable, easier to add and and can include common files/dependencies across all ports.
 
@@ -92,7 +100,34 @@ The following files can be used to build a port.
     - Not strictly required if copying files into `pkg` is done in the `build` script.  But convenient if `build` takes a long time.
   - `test` - will run tests inside a docker image
   - `install-deps` - provides any addition dependencies for build beyond main Dockerfile.
-  
+
+# Release Hosting
+The legacy process of hosting .zip files at the root of the git repository is easy/simple, but has issues:
+ - Every zip increases git repo size, making git clones take longer and longer over time.
+ - No easy way to see what's different in each port.
+ - Max file size of 100MB, meaning some ports like UQM and SuperTux have to be hosted somewhere else, leading to more complexity.
+
+The updated `./build` process will create zips under `./release` - these zips *can* be used to update the legacy zips in the git repo.  However, the intent is to create a different process which `portmaster` can then use for downloads.
+
+In short - the new release hosting process will simply use github releases to host all zips. The 'latest' release will be used by portmaster so that the download code is almost identical (note: the releases will be versioned, but github provides a 'latest' url that will get the most recent).  To avoid rebuilding all ports for every release, remote build caching (`./build --remote-build-cache`) makes it so that zips that have not changed and just be re-downloaded from a previous release and re-published.
+
+Advantages:
+- No 100MB file size limit
+- Very similar download code for PortMaster
+- Zips can be removed from root of repository (at least once they are not used by any `LEGACY_PORTMASTER=true` builds)
+
+Disadvantages:
+- Requires automation as each release has all ports - but we can use github actions to automate this for free.
+- We have to be careful to not break compatibility.
+
+
+## Hosting Structure
+There is a github action which can be triggered to create a release.  This action will build all ports (using caching of prior releases to speed build) and publish a release with the format: `YYYY-MM-DD_HHMM` ex: `2021-11-18_2337`.  
+
+This release will have .zips for all ports as well as `.git.info` files which contains the caching metadata used to determine if a build has changed.
+
+Though there are some minor differences with GitHub Releases (spaces are turned into '.'), portmaster can be updated to point to the following url and it more or less works: `https://github.com/<org>/PortMaster/releases/latest/download/`
+
 # Build Caching Overview
 **tl;dr;** Caching is important, so we made a caching layer to speed up builds.  Disable it on build with `./build --no-build-cache`.
 
@@ -136,8 +171,35 @@ dialog=52b0424
 
 If there are issues - or something outside of a port folder needs to retrigger a build, `--no-build-cache` can be used.
 
+
 ## Remote Build Caching
 By default, `./build` does not look at github releases for build cache due to the high number of API request to do so and only looks at local files in `./releases`.  Remote build caching can be enabled by running `./build --remote-build-cache` and is used when running with GitHub Actions.  In order to use, `export GITHUB_TOKEN=<token>` must be run in your terminal to provide a valid token and increase GitHub's API rate limit from 60 request an hour.  
 See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
 
 Remote build caching will use GitHub APIs to evaluate the previous releases `.git.info` files and see if it matches your local files.  If it's a match, the port's `.zip` will be downloaded and used instead of fully rebuilding.  `./build` is smart enough to detect cases where dependencies have changed so only repackaging is needed.  This allows quick rebuilds of things like `global` or `oga_controls` without rebuilding a ton of packages
+
+# Running Ports on Device
+
+## Background
+One of the goals of PortMaster is to ensure that everything is included in the zip that is needed for a given port (libs, script to run, etc).  One problem with this technically is that there's a lot of duplication across zip files (device detection, common libraries).  This means that supporting new devices or fixing bugs in many zips is **hard**.
+
+## Deduplication
+
+One approach that has simplified things greatly is using `control.txt`.  This is a huge improvement, but does have a drawback that the port now depends on the current version of portmaster.
+
+Using a build system, we can now easily have files which are included in all ports.  This means we can deduplicate a lot of the code and even include control.txt, etc.
+
+There may be additional simplification of control.txt as well.
+
+## Goals
+- Ports should ideally have no *device specific* code in their scripts.  This means that new, similar devices can be added without additional code in each port.
+  - In places where device specific code would be used, some intermediate variable should be used instead.  For example: resolution or number of analog sticks.  This way, unless a device has something novel (a new resolution, etc) which the port needs to account for, it can be updated seamlessly. 
+- Ports should have as little OS specific code in their scripts as possible.  Typically, only for things like additional libraries needed.
+
+## global-functions
+
+`control.txt` is a great step forward for reuse, but there are still cases where: 1. `control.txt` can't ecapsulate everything the port script needs to do. 2. `control.txt` needs better ways to be tested and kept simple as more and more things are added to it.
+
+In these cases, `global-functions` can help.  Basically,`global-functions` can be sourced without any change and then has individual methods for things like `get_os`, `get_device`, etc.  These functions contain either *no* global variables or variables that start with `__` so they are unlikely to be inadvertantly used by other scripts.  Tests can be written in [bats](https://github.com/bats-core/bats-core) to ensure tricky things like device/OS detection are correct once verified.
+
+See documentation in [portmaster](../ports/portmaster/README.md) and [global](../ports/global/README.md)
