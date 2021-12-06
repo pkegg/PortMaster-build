@@ -1,2 +1,3 @@
 PKG_NAME="Commander Genius"
-LEGACY_PORTMASTER="true"
+PKG_URL="https://github.com/gerstrong/Commander-Genius"
+PKG_VERSION="26bd84895161167afb7b442a178aea2a384c7b53"

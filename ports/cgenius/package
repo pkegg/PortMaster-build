@@ -1,0 +1,2 @@
+cp -r files pkg
+cp source/CGeniusExe pkg
