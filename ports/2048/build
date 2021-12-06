@@ -5,5 +5,5 @@ set -e
 # - that git/download is checked out in 'source'
 # - the current directory is ./source
 
-make -f Makefile.libretro platform=arm64 all
+make -f Makefile.libretro platform=arm64 all -j$(nproc)
 cp 2048_libretro.dll ../pkg/2048_libretro.so
