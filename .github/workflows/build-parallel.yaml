@@ -28,7 +28,7 @@ env:
 concurrency: 
   #main will take 'build' and others will be in 'build{pr number}'
   group: ${{github.event_name}}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true #only 1 build at a time per main/PR
+  cancel-in-progress: false
 
 jobs:
   build-base-images:
