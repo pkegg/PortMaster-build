@@ -1,2 +1,3 @@
 PKG_NAME="Cannonball"
-LEGACY_PORTMASTER="true"
+PKG_URL="https://github.com/libretro/cannonball"
+PKG_VERSION="81f9b56381a4bd0e4ab90f81370c057b9ef46f7f"

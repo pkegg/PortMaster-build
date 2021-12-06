@@ -1,0 +1,2 @@
+cp source/cannonball_libretro.so pkg
+cp -r gamedata pkg
