@@ -1,5 +1,5 @@
 # Summary
-This is the implementation of portmaster.
+This is a re-implementation of portmaster scripts using `global-functions` to simplify scripting.  It is capable of being run under: Ubuntu Linux and MacOS in addition to device specific code (useful for testing).
 
 ## Testing
 PortMaster aims to be easy to test.  As it doesn't **require** much beyond `dialog`/`wget`/`curl`, it's easy to run on any platform to verify functionality.
