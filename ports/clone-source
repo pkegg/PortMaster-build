@@ -136,6 +136,35 @@ function clone_source() {
     echo "Handler: '${GET_HANDLER_SUPPORT}' not found"
     exit 1
   fi
+  echo "patching: ${PACKAGE_DIR}"
+  patch_source "$PACKAGE" "$PACKAGE_DIR"
+
+}
+function patch_source() {
+  local PACKAGE
+  PACKAGE="$1"
+  local PACKAGE_DIR
+  PACKAGE_DIR="$2"
+  if [[ ! -d "$PACKAGE_DIR/patches" ]]; then
+     return
+  fi
+  #echo "patch directory found: $PACKAGE_DIR/patches"
+	patches=$(find "$PACKAGE_DIR" -name *.patch)
+	#echo "patches: ${patches}"
+
+  pushd "$PACKAGE_DIR/source" &> /dev/null
+	if [[ ! -z "$patches" ]]; then
+    # If you are patching source code it needs to be clean
+    git reset --hard HEAD
+
+	  for patching in ${patches}
+	  do
+       echo "patch: $patching"
+		   patch -Np1 < "$patching"
+	  done
+	 fi
+   popd &> /dev/null
+
 }
 function unpack() {
   local unpack_file="$1"

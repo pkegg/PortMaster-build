@@ -440,7 +440,7 @@ function package_port() {
   fi
   pushd "${PACKAGE_DIR}" &> /dev/null
   PACKAGE_SCRIPT="./package"
-  if [[ ! -f "$PACKAGE_SCRIPT" && -f "$PACKAGE_SCRIPT.tmp" ]]; then
+  if [[ ! -f "$PACKAGE_SCRIPT" && -f "$PACKAGE_SCRIPT.tmp" && "$LEGACY_PORTMASTER" == "true" ]]; then
     PACKAGE_SCRIPT="$PACKAGE_SCRIPT.tmp"
   fi
   if [[ -f "${PACKAGE_SCRIPT}" ]]; then
