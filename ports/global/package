@@ -2,7 +2,7 @@
 
 #This ensures that the current github org gets imprinted into global-functions get_github_org
 source ../ports.info
-sed "s/__GITHUB_ORG__/${GITHUB_ORG}/g" < ./global-functions > pkg/global-functions
+sed "s/__GITHUB_ORG__/${GITHUB_ORG}/g; s/__GITHUB_REPO__/${GITHUB_REPO}/g" < ./global-functions > pkg/global-functions
 
 cp ./gamecontrollerdb.txt pkg/
 cp ./control.txt pkg/
