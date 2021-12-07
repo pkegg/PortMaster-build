@@ -1,2 +1,3 @@
 cp -r files pkg
 cp source/src/CGeniusExe pkg
+cp -r games/ pkg/
