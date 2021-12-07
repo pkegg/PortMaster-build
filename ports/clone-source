@@ -149,7 +149,7 @@ function patch_source() {
      return
   fi
   #echo "patch directory found: $PACKAGE_DIR/patches"
-	patches=$(find "$PACKAGE_DIR" -name *.patch)
+	patches=$(find "$PACKAGE_DIR/patches" -name *.patch)
 	#echo "patches: ${patches}"
 
   pushd "$PACKAGE_DIR/source" &> /dev/null

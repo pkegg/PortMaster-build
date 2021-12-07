@@ -1,4 +1,4 @@
 PKG_NAME="UQM"
 PKG_DIRECTORY_OVERRIDE="UQM"
-PKG_URL="https://github.com/juj/sc2-uqm"
+PKG_URL="https://github.com/juj/sc2-uqm/"
 PKG_VERSION="ff2444088d42e80612fd28f79d368783e244a606"

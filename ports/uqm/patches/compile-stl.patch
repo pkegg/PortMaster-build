@@ -1,0 +1,12 @@
+diff --git a/sc2/src/libs/input/sdl/input.c b/sc2/src/libs/input/sdl/input.c
+index 498a9209c..ff4442e91 100644
+--- a/sc2/src/libs/input/sdl/input.c
++++ b/sc2/src/libs/input/sdl/input.c
+@@ -20,6 +20,7 @@
+ #include <errno.h>
+ #include <string.h>
+ #include "input.h"
++#include <stdlib.h>
+ #include "../inpintrn.h"
+ #include "libs/threadlib.h"
+ #include "libs/input/sdl/vcontrol.h"
