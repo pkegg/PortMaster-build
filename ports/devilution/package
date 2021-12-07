@@ -12,7 +12,7 @@ FILE_SHA=$(sha256sum "$LOCAL_FILE" | cut -d' ' -f1)
 
 if [[ "$FILE_SHA" != "$SHA" ]];then
   echo "SHA: $FILE_SHA does not match expected: $SHA"
-  exit
+  exit 1
 fi
 
 rm -rf "$UNPACK_DIR"
