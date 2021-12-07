@@ -1,0 +1,4 @@
+
+pushd source
+cp -r conf docs graphics levels music sounds rocksndiamonds ../pkg
+popd

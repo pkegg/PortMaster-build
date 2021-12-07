@@ -1,3 +1,5 @@
 PKG_NAME="Rocks n Diamonds"
 PKG_ZIP_NAME_OVERRIDE="rocksndiamonds"
-LEGACY_PORTMASTER="true"
+PKG_URL=https://git.artsoft.org/rocksndiamonds.git/
+PKG_VERSION="9695a8edd4c617065b02433dd649266e2d154ad3"
+PKG_DEPENDS=oga_controls

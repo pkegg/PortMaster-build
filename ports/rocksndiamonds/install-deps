@@ -1,0 +1,2 @@
+apt update
+apt install -y libsdl2-image-dev libsdl2-mixer-dev libsdl2-net-dev
