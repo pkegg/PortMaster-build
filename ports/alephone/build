@@ -1,0 +1,4 @@
+export DESTDIR="$(realpath ./pkg)"
+./autogen.sh --prefix="/"
+make -j$(nproc)
+make install

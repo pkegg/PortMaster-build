@@ -1,0 +1,2 @@
+cp source/pkg/bin/alephone ./pkg
+cp -r source/pkg/share ./pkg

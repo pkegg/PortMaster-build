@@ -1,4 +1,8 @@
 PKG_NAME="Marathon"
 PKG_ZIP_NAME_OVERRIDE="alephone-marathon"
 PKG_DIRECTORY_OVERRIDE="alephone"
-LEGACY_PORTMASTER="true"
+PKG_VERSION="20210408"
+PKG_URL="https://github.com/Aleph-One-Marathon/alephone/releases/download/release-$PKG_VERSION/Marathon-$PKG_VERSION-Data.zip"
+GET_HANDLER_SUPPORT="archive"
+PKG_SHA256="58ce5cd17fc119e0eef1dee1304dcb8996af92026597aadcdc179ab7fd9bb1d8"
+PKG_DEPENDS=alephone

@@ -1,0 +1,2 @@
+mkdir -p pkg/gamedata
+cp -r source/Marathon pkg/gamedata
