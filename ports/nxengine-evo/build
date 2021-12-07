@@ -1,0 +1,7 @@
+#!/bin/bash
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DPORTABLE=ON ..
+make -j$(nproc)
+strip nxextract
+strip nxengine-evo
