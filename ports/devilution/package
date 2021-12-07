@@ -1,0 +1,26 @@
+set -e
+DEMO_URL=http://ftp.blizzard.com/pub/demos/diablosw.exe
+LOCAL_FILE=$(realpath ./demo.exe)
+SHA="d2bbdc06850303a936b0184c8cf47a3df61b107fdc600720a4322ea9f862d3b6"
+UNPACK_DIR=./tmp
+
+if [[ ! -f "$LOCAL_FILE" ]]; then
+  wget "$DEMO_URL" -O "$LOCAL_FILE"
+fi
+
+FILE_SHA=$(sha256sum "$LOCAL_FILE" | cut -d' ' -f1)
+
+if [[ "$FILE_SHA" != "$SHA" ]];then
+  echo "SHA: $FILE_SHA does not match expected: $SHA"
+  exit
+fi
+
+rm -rf "$UNPACK_DIR"
+mkdir -p "$UNPACK_DIR"
+pushd "$UNPACK_DIR"
+7z e "${LOCAL_FILE}"
+cp "[0]" ../pkg/DIABDAT.MPQ
+popd
+
+cp source/devilutionx pkg
+cp -r files/* pkg

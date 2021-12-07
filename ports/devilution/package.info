@@ -1,2 +1,3 @@
 PKG_NAME="Devilutionx"
-LEGACY_PORTMASTER="true"
+PKG_URL="https://github.com/diasurgical/devilutionX"
+PKG_VERSION="d17c6890776c3ceab482b60d9e825f558f2971cb"

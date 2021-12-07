@@ -1,0 +1,2 @@
+apt update
+apt install -y libsodium-dev libbz2-dev p7zip-full
