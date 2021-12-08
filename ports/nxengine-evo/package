@@ -5,3 +5,4 @@ cp -rf source/data/ pkg
 #Get language pack
 wget -t 3 -T 60 --no-check-certificate https://github.com/nxengine/translations/releases/download/v1.14/all.zip
 unzip -o all.zip -d pkg
+rm -rf all.zip
