@@ -1,5 +1,6 @@
 **/source/
 **/demo.exe
+/ports/nx-engine-evo/all.zip*
 /ports/*/Dockerfile.deps
 /ports/*/Dockerfile.build
 /ports/*/clone-source
