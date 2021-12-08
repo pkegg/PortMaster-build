@@ -1,2 +1,4 @@
 cp source/pkg/bin/alephone ./pkg
 cp -r source/pkg/share ./pkg
+mkdir -p ./pkg/gamedata
+cp -r source/data/Scenarios/* ./pkg/gamedata
