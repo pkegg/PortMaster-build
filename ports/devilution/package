@@ -9,12 +9,20 @@ if [[ ! -f "$LOCAL_FILE" ]]; then
 fi
 
 FILE_SHA=$(sha256sum "$LOCAL_FILE" | cut -d' ' -f1)
-
 if [[ "$FILE_SHA" != "$SHA" ]];then
   echo "SHA: $FILE_SHA does not match expected: $SHA"
-  exit 1
+  rm -rf "$LOCAL_FILE"
 fi
 
+if [[ ! -f "$LOCAL_FILE" ]]; then
+  wget "$DEMO_URL" -O "$LOCAL_FILE"
+fi
+
+FILE_SHA=$(sha256sum "$LOCAL_FILE" | cut -d' ' -f1)
+if [[ "$FILE_SHA" != "$SHA" ]];then
+  echo "SHA: $FILE_SHA does not match expected: $SHA"
+  exit 
+fi
 rm -rf "$UNPACK_DIR"
 mkdir -p "$UNPACK_DIR"
 pushd "$UNPACK_DIR"
@@ -24,3 +32,4 @@ popd
 
 cp source/devilutionx pkg
 cp -r files/* pkg
+rm -rf "${UNPACK_DIR}"
