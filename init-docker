@@ -29,6 +29,7 @@ fi
 BUILDX_RELEASE=v0.7.0
 
 if ! docker buildx &> /dev/null; then
+  echo "no buildx found"
   if ! which curl &> /dev/null; then
      if which apt &> /dev/null; then
        echo "Installing curl..."
@@ -44,11 +45,18 @@ if ! docker buildx &> /dev/null; then
   BUILDX_BIN="${CLI_PLUGIN_DIR}/docker-buildx"
 
   mkdir -p ${CLI_PLUGIN_DIR}
-  curl -L -o "${BUILDX_BIN}" https://github.com/docker/buildx/releases/download/${BUILDX_RELEASE}/buildx-${BUILDX_RELEASE}.linux-amd64
-  chmod +x "${BUILDX_BIN}" 
+  if ! which dpkg &> /dev/null; then
+    echo "Only debian based systems (with dpkg) fully supported to install docker buildx.  Please install docker buildx manually."
+    exit 1
+  else
+    architecture=$(dpkg --print-architecture)
+    echo "architecture: $architecture"
+    curl -L -o "${BUILDX_BIN}" https://github.com/docker/buildx/releases/download/${BUILDX_RELEASE}/buildx-${BUILDX_RELEASE}.linux-${architecture}
+    chmod +x "${BUILDX_BIN}" 
+  fi
 fi
 
-if [[ ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
+if [[ "$(arch)" == "amd64" && ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
   docker run --rm --privileged tonistiigi/binfmt:latest --install all
 fi 
 
