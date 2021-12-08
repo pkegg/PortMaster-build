@@ -54,10 +54,13 @@ if ! docker buildx &> /dev/null; then
     echo "Only debian based systems (with dpkg) fully supported to install docker buildx.  Please install docker buildx manually."
     exit 1
   else
-    architecture=$(dpkg --print-architecture)
+    architecture="$(dpkg --print-architecture)"
     echo "architecture: $architecture"
     curl -L -o "${BUILDX_BIN}" https://github.com/docker/buildx/releases/download/${BUILDX_RELEASE}/buildx-${BUILDX_RELEASE}.linux-${architecture}
     chmod +x "${BUILDX_BIN}" 
+    echo "testing docker buildx..."
+    docker buildx ls &> /dev/null
+    echo "done"
   fi
 fi
 
