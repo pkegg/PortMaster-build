@@ -11,13 +11,18 @@ if ! which docker &> /dev/null; then
   fi
 fi
 
+
 if ! groups | grep -q docker; then
-  echo "adding docker group to this user" 
-  sudo usermod -aG docker $USER
-  echo "Added 'docker' group to this user"
-  echo "ERROR: You must re-login or run: newgrp docker"
-  echo "  Then rerun this script"
-  exit 1
+  if [[ $OSTYPE == 'darwin'* ]]; then
+    echo "no need to add docker group on mac - OK"
+  else
+    echo "adding docker group to this user" 
+    sudo usermod -aG docker $USER
+    echo "Added 'docker' group to this user"
+    echo "ERROR: You must re-login or run: newgrp docker"
+    echo "  Then rerun this script"
+    exit 1
+  fi
 fi  
 
 if ! docker ps -q &> /dev/null; then
@@ -56,7 +61,9 @@ if ! docker buildx &> /dev/null; then
   fi
 fi
 
-if [[ "$(arch)" == "amd64" && ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
+if [[ $OSTYPE == 'darwin'* ]]; then
+  echo "no need to install qemu on mac - OK"
+elif [[ "$(arch)" == "amd64" && ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
   docker run --rm --privileged tonistiigi/binfmt:latest --install all
 fi 
 
