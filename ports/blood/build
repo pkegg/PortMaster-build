@@ -1,0 +1,1 @@
+make USE_OPENGL=0 SDL_TARGET=2 USE_LIBVPX=0 -j$(nproc)
