@@ -1,0 +1,4 @@
+PKG_NAME="bstone"
+PKG_LIBRARY=true
+PKG_URL=https://github.com/bibendovsky/bstone
+PKG_VERSION="48333f634bb9db1c5e8ce1f110295f499c1faaa1"
