@@ -1,3 +1,4 @@
 PKG_NAME="Bermuda Syndrome"
 PKG_ZIP_NAME_OVERRIDE="Bermuda_Syndrome"
-LEGACY_PORTMASTER="true"
+PKG_URL="https://github.com/cyxx/bermuda"
+PKG_VERSION="cf6bdb68d53a1618967da565a44c931b15daf791"

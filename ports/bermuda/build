@@ -1,0 +1,3 @@
+make -j$(nproc)
+cp bs ../pkg
+cp -r ../files/* ../pkg
