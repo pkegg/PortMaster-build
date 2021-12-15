@@ -1,0 +1,7 @@
+cp source/blues ./pkg
+
+if [[ ! -d "pkg.zip" ]]; then
+  wget -O pkg.zip https://archive.org/download/TheBluesBrothers_1020/BluesBrothersThedemo1991titusFranceSaaction.zip
+fi
+
+unzip pkg.zip -d pkg/gamedata

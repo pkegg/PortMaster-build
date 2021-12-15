@@ -1,2 +1,3 @@
 PKG_NAME="Blues Brothers"
-LEGACY_PORTMASTER="true"
+PKG_URL=https://github.com/cyxx/blues
+PKG_VERSION="4aa89bc91d53567d5f658167a91a9e70a55ac21f"
