@@ -56,6 +56,7 @@ Most scripts are located in `./ports` but frequently used scripts (`build`, `cle
 - `init-docker` - Checks docker is installed.  Installs docker buildx and qemu emulation for docker if not already installed.
 - `ports/build-base-image` - builds the top level `Dockerfile` (`install-deps`).  Not required unless changing `ports/install-deps`
 - `run` - This is what is run on-device to start the port.  
+- `files` - Any files in this directory will automatically be copied into the package (`pkg` folder) and included in the zip.
 
 Some directories/files are created as part of the build but ignored by git:
 - `source` - where the source of the PKG_URL is put.  Build is smart enough to `fetch` latest git if source already exists.

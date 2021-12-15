@@ -440,6 +440,12 @@ function package_port() {
     return
   fi
   pushd "${PACKAGE_DIR}" &> /dev/null
+  
+  if [[ -d "./files" ]]; then
+    echo "files directory exists.  Copying to pkg"
+    cp -r ./files/. ./pkg
+  fi
+
   PACKAGE_SCRIPT="./package"
   if [[ ! -f "$PACKAGE_SCRIPT" && -f "$PACKAGE_SCRIPT.tmp" && "$LEGACY_PORTMASTER" == "true" ]]; then
     PACKAGE_SCRIPT="$PACKAGE_SCRIPT.tmp"

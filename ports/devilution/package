@@ -31,5 +31,4 @@ cp "[0]" ../pkg/DIABDAT.MPQ
 popd
 
 cp source/devilutionx pkg
-cp -r files/* pkg
 rm -rf "${UNPACK_DIR}"
