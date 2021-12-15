@@ -44,7 +44,8 @@ apt-get -y install build-essential \
            libpcre2-8-0 \
            jq \
            libegl-mesa0 \
-           libegl1
+           libegl1 \
+           sudo
 
 # test dependencies (if we decide to separate them later)
 apt-get -y install \
