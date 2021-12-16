@@ -1,0 +1,10 @@
+apt update
+
+# copied from Dockerfile.build (see source directory)
+apt install -y  liblua5.3-0 liblua5.3-0-dbg liblua5.3-dev \
+                lua-filesystem lua-lpeg \
+                libsdl2-dev libsdl2-mixer-dev \
+                ffmpeg timidity \
+                libavformat-dev libavresample-dev libavdevice-dev libavutil-dev libavfilter-dev libavcodec-dev \
+                libpostproc-dev libswscale-dev libswresample-dev \
+                libfreetype6-dev

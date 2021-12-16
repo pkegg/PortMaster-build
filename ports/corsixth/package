@@ -1,0 +1,6 @@
+pushd source/CorsixTH/
+cp -r Bitmap Campaigns Graphics Levels Lua CorsixTH.lua ../../pkg
+popd
+
+cp source/build/CorsixTH/corsix-th ./pkg/
+cp source/build/CorsixTH/libCorsixTH_lib.a ./pkg/

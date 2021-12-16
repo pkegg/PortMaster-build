@@ -1,3 +1,4 @@
 PKG_NAME="CorsixTH"
 PKG_DIRECTORY_OVERRIDE="CorsixTH"
-LEGACY_PORTMASTER="true"
+PKG_URL="https://github.com/CorsixTH/CorsixTH"
+PKG_VERSION="799cf3c4d3a6b30dd5117739ac8b3af5afc24e33"
