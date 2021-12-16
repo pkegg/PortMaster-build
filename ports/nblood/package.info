@@ -1,0 +1,4 @@
+PKG_NAME="Blood"
+PKG_DIRECTORY_OVERRIDE="Blood"
+PKG_URL=https://github.com/nukeykt/NBlood.git
+PKG_VERSION="cc8d57ee5d6ac8a3c3f400501df25892cb9db6b1"
