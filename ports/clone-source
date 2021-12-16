@@ -91,14 +91,21 @@ function clone_source() {
       PKG_SHA="${PKG_GIT_SHA}"
     fi
 
+    #Allows setting in package.info
     if [[ -z "${PKG_TYPE}" ]]; then
       local url_file_name="${PKG_URL##*/}"
-      PKG_TYPE="${url_file_name##*.}"
+
+      if [[ "${url_file_name}" == *.tar.* ]]; then
+        PKG_TYPE="tar.${url_file_name##*.}"
+      else
+        PKG_TYPE="${url_file_name##*.}"
+      fi
     fi
 
-    if [[ "$PKG_TYPE" != "zip" &&  "$PKG_TYPE" != "xz" ]]; then
+    if [[ "$PKG_TYPE" != "zip" &&  "$PKG_TYPE" != tar.* ]]; then
 
       echo "PKG_TYPE other than zip or tar.*: (${PKG_TYPE}) is not currently supported"
+      exit 1
     fi
     local DOWNLOAD_FILE="${PACKAGE_DIR}/pkg.${PKG_TYPE}"
     local DOWNLOAD_FILE_SHA="${DOWNLOAD_FILE}.${SHA_TYPE}"
@@ -178,7 +185,7 @@ function unpack() {
     rm -rf "${unpack_dir}"
     echo "Unzipping into: ${unpack_dir}"
     unzip "${unpack_file}" -d "${unpack_dir}"
-  elif [[ "${unpack_type}" == "xz" ]]; then
+  elif [[ "${unpack_type}" == tar.* ]]; then
     echo "Removing existing directory: ${unpack_dir}"
     rm -rf "${unpack_dir}"
     mkdir -p "${unpack_dir}"
