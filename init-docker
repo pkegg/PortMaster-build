@@ -67,10 +67,20 @@ fi
 if [[ $OSTYPE == 'darwin'* ]]; then
   echo "no need to install qemu on mac - OK"
 elif [[ "$(arch)" == "amd64" && ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
-  docker run --rm --privileged tonistiigi/binfmt:latest --install all
+  if which dpkg; then
+    echo "Permanently installing support for other platforms"
+    sudo apt-get update
+    sudo apt-get install qemu binfmt-support qemu-user-static
+  else
+    echo "Could not install qemu, binfmt-support and qemu-user-static.  $0 may need to be run after each reboot"
+    docker run --rm --privileged tonistiigi/binfmt:latest --install all
+  fi
+  
 fi 
 
 if ! docker buildx ls | grep -q portmaster-remote-builder; then
   docker buildx create --name portmaster-remote-builder --driver docker-container
 fi
+
+echo "docker ready"
 
