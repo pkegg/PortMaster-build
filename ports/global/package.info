@@ -1,2 +1,4 @@
 PKG_NAME="global"
 PKG_LIBRARY="true"
+#Removing any for now so forks aren't required to build amd64 linux image too
+#BUILD_PLATFORM="any"
