@@ -3,7 +3,7 @@ This repository creates build process for PortMaster that allows for repeatable,
 
 # tl;dr - build a port - docker
 - Install [docker](https://docs.docker.com/get-docker/) on linux/mac/wsl2.
-  - `apt-get install docker.io` works on Ubuntu 20.04+ on linux.
+  - `apt-get install docker.io` works on Ubuntu 20.04+ on linux. On WSL2 - ensure you install also install Docker Desktop
 - Check/update docker permisssions/plugins with: `./init-docker`
 - Build a port: `./build <port name>`.  See the [ports](../ports/) directory for all ports.
   - Ex (these are implemented as 'real' builds): `2048`, `cdogs`, `hcl`, `portmaster`.  See `./build --help` for all options.
