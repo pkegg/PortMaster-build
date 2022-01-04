@@ -1,3 +1,2 @@
 PKG_NAME="F2bgl"
 PKG_ZIP_NAME_OVERRIDE="fade_to_black"
-LEGACY_PORTMASTER="true"
