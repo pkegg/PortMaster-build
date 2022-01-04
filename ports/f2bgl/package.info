@@ -1,2 +1,4 @@
 PKG_NAME="F2bgl"
 PKG_ZIP_NAME_OVERRIDE="fade_to_black"
+PKG_URL=https://github.com/cyxx/f2bgl
+PKG_VERSION="0b84f41c7cc13a41f5a1832549485b814a52070d"
