@@ -49,7 +49,7 @@ function clone_source() {
       fi
       echo "source dir: ${SOURCE_DIR} url: ${PKG_URL}"
       if [[ "$ALREADY_CLONED" == "false" ]]; then
-         rm -rf "${SOURCE_DIR}"
+         rm -rf "${SOURCE_DIR}"]
          pushd "${PACKAGE_DIR}" &> /dev/null
          git clone --progress --recursive "${PKG_URL}" "${SOURCE_DIR_NAME}"
          popd &> /dev/null

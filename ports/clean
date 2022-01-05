@@ -50,7 +50,7 @@ function parse_args() {
   fi
 }
 parse_args "$@"
-chmod +w -R "$DIR/${PACKAGE}" #this is just to work around permissions in srb2kart
+
 rm -rf "${DIR}/${PACKAGE}/source"
 rm -rf "${DIR}/${PACKAGE}/pkg"
 rm -rf "${DIR}/${PACKAGE}/clone-source"
