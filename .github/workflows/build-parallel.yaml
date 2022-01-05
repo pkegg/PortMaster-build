@@ -73,7 +73,8 @@ jobs:
             echo "::set-output name=token::${default_token}"
             echo "using default"
           fi
-          
+        env:
+            GITHUB_TOKEN: ${{ steps.token.outputs.token }}
       - id: set-matrix
         name: Determine Matrix Builds
         run: |
