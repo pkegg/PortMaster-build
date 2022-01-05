@@ -77,10 +77,7 @@ jobs:
         name: Determine Matrix Builds
         run: |
             env
-            echo "token: $GITHUB_TOKEN"
             export GITHUB_TOKEN="$GITHUB_TOKEN"
-            ./ports/build-all  --no-build --builds
-            ./ports/build-all  --no-build --builds --use-remote-build-cache
             echo -ne '::set-output name=matrix::{"package":['
             echo -ne $(./ports/build-all  --no-build --builds --use-remote-build-cache | sed -e 's/^\|$/"/g' |sort | tr '\n' ',')
             echo ']}'
