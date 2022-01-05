@@ -1,0 +1,10 @@
+apt update
+apt install -y libsdl2-mixer-dev libsdl2-image-dev 
+
+# Install CMake 3.15+ as required by fheroes (3.14 is default in debian buster - current base image - so we have to manually do this)
+CMAKE_VERSION=3.15.2
+wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
+tar -xvf cmake-${CMAKE_VERSION}.tar.gz
+cd cmake-${CMAKE_VERSION}
+./bootstrap --parallel=$(nproc)
+make install -j$(nproc)

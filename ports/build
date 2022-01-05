@@ -805,7 +805,16 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "cleaning..."
     $DIR/clean ${PACKAGE}
   fi
-
+  if ! which zip &>/dev/null ; then
+    echo "zip is required.  Attempting install..."
+    sudo apt update
+    sudo apt install -y zip
+  fi
+  if ! which unzip &>/dev/null ; then
+    echo "unzip is required.  Attempting install..."
+    sudo apt update
+    sudo apt install -y unzip
+  fi
   GITHUB_AUTH=""
   if [[ -n "${GITHUB_TOKEN}" ]]; then
     GITHUB_AUTH="Authorization: token ${GITHUB_TOKEN}"

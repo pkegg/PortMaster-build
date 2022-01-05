@@ -1,0 +1,2 @@
+cmake -G Ninja -j$(nproc) .
+ninja
