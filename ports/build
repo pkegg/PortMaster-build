@@ -32,11 +32,28 @@ CACHE_DIR="/tmp/cache/github"
 # returns true ('0') if only the package hashes matches (no need for deps)
 function release_matches() {
   local package="$1"
-  local git_info_a="$2"
-  local git_info_b="$3"
-  local git_info_a_only=$(echo -e "${git_info_a}" | grep "^${package}[=_].*")
-  local git_info_b_only=$(echo -e "${git_info_b}" | grep "^${package}[=_].*")
-  if [[ "${git_info_a_only}" == "${git_info_b_only}" ]]; then
+  local dependencies_cache_a="$2"
+  local dependencies_cache_b="$3"
+  local dependencies_cache_a_only="$(echo -e "${dependencies_cache_a}" | grep "^${package}[=_].*")"
+  local dependencies_cache_b_only="$(echo -e "${dependencies_cache_b}" | grep "^${package}[=_].*")"
+  if [[ "${dependencies_cache_a_only}" == "${dependencies_cache_b_only}" ]]; then
+     return 0
+  else
+     return 1
+  fi
+}
+
+function release_full_matches() {
+  local dependencies_cache_a="$1"
+  local dependencies_cache_b="$2"
+  local dependencies_cache_a_only="$(echo -e "${dependencies_cache_a}" | sort | grep -v "global=" | grep -v "package_" | grep -v -E '^$' )" #TODO: remove global
+  local dependencies_cache_b_only="$(echo -e "${dependencies_cache_b}" | sort | grep -v "global=" | grep -v "package_"| grep -v -E '^$' )" #TODO: remove global
+
+  echo_err "match a"
+  echo_err "$dependencies_cache_a_only"
+  echo_err "match b"
+  echo_err "$dependencies_cache_b_only"
+  if [[ "${dependencies_cache_a_only}" == "${dependencies_cache_b_only}" ]]; then
      return 0
   else
      return 1
@@ -65,10 +82,24 @@ function github_api() {
   echo -e "${response}"
 }
 function _github_call() {
-  local apiUrl="$GITHUB_API_URL/$1"
+  local apiUrl="$1"
+  local accept_header="$2"
+  local response
+  response="$(_github_call_raw "$apiUrl" "${accept_header}" |  tail -n +2 |grep -v "^[A-Za-z].*:" | tail -n +2)"
+  echo -e "${response}"
+
+}
+function _github_call_raw() {
+  local apiUrl="$1"
+  echo_err "apiUrl=$1"
+  if [[ "$apiUrl" != http* ]]; then
+    apiUrl="$GITHUB_API_URL/$1"
+  fi
+  echo_err "apiUrl=$apiUrl"
   local cacheUrl="$1"
   local accept_header="$2"
   local headers=""
+  local etag=""
   set +e
   if [[ -n "${accept_header}" ]]; then
      headers="--header=Accept:${accept_header}"
@@ -76,45 +107,68 @@ function _github_call() {
   
   local return_code
   local cache_file="$CACHE_DIR/${cacheUrl}"
-  cache_dir="$(dirname "$cache_file")"
+  local cache_dir="$(dirname "$cache_file")"
   mkdir -p "${cache_dir}"
 
   echo_err "cache file: $cache_file"
+
+  #github's etag caching for releases is unreliable (as etag seems to changes when users download)
+  #So - don't redownload files downloaded in the last hour
+  cache_warm_seconds="$((60*60))"
+  cache_warm=false
 
   cache=""
   if [[ -f "$cache_file" ]]; then
     cache="$(cat "$cache_file" |col -b )"
     etag="$(_get_header "ETag" "$cache" | sed "s|^.*W/||g" )"
     echo_err "etag: '${etag}'"
+    cache_date="$(_get_header "Date" "$cache" )"
+    cache_date_seconds="$(date -d "$cache_date" +%s)"
+    current_time_seconds="$(date +%s)"
+    cache_age_seconds="$(($current_time_seconds - $cache_date_seconds))"
+    echo_err "cache date: $cache_date cache_date_seconds: $cache_date_seconds current_time_seconds: $current_time_seconds cache_age_seconds: $cache_age_seconds"
+
   fi
-  echo_err wget --save-headers ${headers} --header="$GITHUB_AUTH" --header="If-None-Match: \"$etag\"" -O- "$apiUrl" -q
 
-  output="$(wget --save-headers ${headers} --header="$GITHUB_AUTH" --header="If-None-Match: \"$etag\"" -O- "$apiUrl" -q 2>&1 |col -b)"
-
-  response="$(echo -e "${output}" | tail -n +2 | grep -v "^[A-Za-z]" | tail -n +2)"
-  return_code="$(_get_return "$output")"
-  #echo_err "output: ${output}"
-  
-  echo_err "return code: $return_code"
-  if [[ "$return_code" == "200" ]]; then
-    rate_limit="$(_get_header "X-RateLimit-Limit" "${output}")"
-    rate_limit_remaining="$(_get_header "X-RateLimit-Remaining" "${output}")"
-    rate_limit_used="$(_get_header "X-RateLimit-Used" "${output}")"
-  
-    echo_err "rate limit: $rate_limit"
-    echo_err "remaining: $rate_limit_remaining"
-    echo_err "used: $rate_limit_used"
-    echo -e "${output}" > "$cache_file"
-  elif [[ "$return_code" == "404" ]]; then
-    echo_err "404"
-    return
+  if [[ -n "$cache_age_seconds" && "$cache_age_seconds" -le "$cache_warm_seconds" ]]; then
+    echo_err "Cache age seconds: $cache_age_seconds is less than cache time: $cache_warm_seconds.  Not querying API"
+    echo_err "Cache hit (time): $apiUrl"
   else
-    echo_err "output: ${output}"
-    echo_err "cache hit.  Look at: $cache_file for more info"
+    echo_err "wget --save-headers ${headers} --header="$GITHUB_AUTH" --header="If-None-Match: \"$etag\"" -O- "$apiUrl" -q"
+    output="$(wget --save-headers ${headers} --header="$GITHUB_AUTH" --header="If-None-Match: \"$etag\"" -O- "$apiUrl" -q 2>&1)"
+    return_raw=$?
+    response="$(echo -e "${output}" | tail -n +2 | grep -v "^[A-Za-z]" | tail -n +2)"
+    return_code="$(_get_return "$output")"
+    #echo_err "output: $(echo -e "$output" | grep "^[A-Za-z]" )"
     
+    echo_err "return http code: $return_code return code: $retu"
+    if [[ "$return_code" == "200" ]]; then
+      rate_limit="$(_get_header "X-RateLimit-Limit" "${output}")"
+      rate_limit_remaining="$(_get_header "X-RateLimit-Remaining" "${output}")"
+      rate_limit_used="$(_get_header "X-RateLimit-Used" "${output}")"
+      echo_err "cache miss: $apiUrl"
+      echo_err "rate limit: $rate_limit"
+      echo_err "remaining: $rate_limit_remaining"
+      echo_err "used: $rate_limit_used"
+      echo_err "new etag: $(echo -e "$output" | grep 'ETag:') to file: $cache_file"
+      echo -e "${output}" > "$cache_file"
+    elif [[ "$return_code" == "404" ]]; then
+      echo_err "404"
+      set -e
+      return
+    elif [[ -n "$etag" && "$return_raw" == "8" ]]; then
+      echo_err "cache hit (etag). Look at: $cache_file for more info"
+    else
+      echo_err "output: ${output}"
+      echo_err "url: $apiUrl"
+      echo_err "ERROR: Something went wrong with getting api response"
+      echo_err "return http code: ${return_code} wget return code: $return_raw"
+      set -e
+      return
+    fi
   fi
   if [[ -f "${cache_file}" ]]; then
-    response="$(cat "$cache_file" |  tail -n +2 |grep -v "^[A-Za-z].*:" | tail -n +2)"
+    response="$(cat "$cache_file")"
   fi
   set -e
   echo -e "${response}"
@@ -136,25 +190,30 @@ function _get_return() {
 }
 function github_api_asset_output()
 {
-  local asset_id=$1
+  local release_tag="$1"
+  local zip_name="$2"
   local org="$GITHUB_ORG"
   local repo="$GITHUB_REPO"
-  local url="releases/assets/${asset_id}"
-  local apiUrl="${org}/${repo}/${url}"
+  local url="releases/${release_tag}/${zip_name}"
+  local cache_url="${org}/${repo}/${url}"
   
-  cache_file="$CACHE_DIR/${apiUrl}"
-  cache=""
-  if [[ -f "$cache_file" ]]; then
-    cache="$(cat "$cache_file" |col -b )"
-    etag="$(_get_header "ETag" "$cache" | sed "s|^.*W/||g" )"
-    echo_err "etag: '${etag}'"
-  fi
+  local cache_file="$CACHE_DIR/${cache_url}"
+  mkdir -p "$(dirname $cache_file)"
+  local response
+  #echo_err "response: ${response}"
+  browser_url="https://github.com/${org}/${repo}/releases/download/${release_tag}/${zip_name}"
+  echo_err "browser url: $browser_url"
 
-  # wget leaks credentials to AWS redirect which sometimes issues 400's.  So - using curl
-  # see: https://savannah.gnu.org/bugs/?56909 and https://curl.se/docs/CVE-2018-1000007.html
-  response=$(curl -L -H 'Accept:application/octet-stream' -H "$GITHUB_AUTH" -H "If-None-Match: \"$etag\"" "$GITHUB_API_URL/${apiUrl}")
- 
-  echo "${response}"
+  cache_file="$cache_file-file"
+  echo_err "cache file asset: $cache_file"
+  if [[ -f "$cache_file" ]]; then
+    response="$(cat "$cache_file")"
+  else
+    response="$(wget -O- "$browser_url")"
+    echo -e "$response" > "$cache_file"
+  fi
+  echo_err "response: ${response}"
+  echo -e "$response"
 }
 function github_api_asset_download()
 {
@@ -168,19 +227,18 @@ function github_api_asset_download()
   local repo="$GITHUB_REPO"
   local url="releases/assets/${asset_id}"
   local apiUrl="${org}/${repo}/${url}"
-  cache_file="$CACHE_DIR/${apiUrl}"
-  cache=""
-  if [[ -f "$cache_file" ]]; then
-    cache="$(cat "$cache_file" |col -b )"
-    etag="$(_get_header "ETag" "$cache" | sed "s|^.*W/||g" )"
-    echo_err "etag: '${etag}'"
-  fi
+  
+  local cache_file="$CACHE_DIR/${apiUrl}"
+  local response
+  response="$(_github_call "${apiUrl}")"
+  #echo_err "response: ${response}"
+  browser_url="$(echo -e "${response}" | jq ".browser_download_url" | xargs)"
+  echo_err "browser url: $browser_url"
 
-  # wget leaks credentials to AWS redirect which sometimes issues 400's.  So - using curl
-  # see: https://savannah.gnu.org/bugs/?56909 and https://curl.se/docs/CVE-2018-1000007.html
-  if ! curl -L -H "$GITHUB_AUTH" -H "If-None-Match: \"$etag\"" -H 'Accept:application/octet-stream' --output "${output_file}" "$GITHUB_API_URL/${apiUrl}"; then
-    echo "Error!  Could not download!"
-  fi
+  response=$(wget -O "$output_file" "$browser_url")
+  echo_err "response: ${response}"
+
+  echo -e "$response"
 }
 
 function get_linux_platform() {
@@ -201,7 +259,8 @@ function get_linux_platform() {
 }
 # outputs to stderr
 function echo_err() {
-  echo "$@" 1>&2;
+  
+  echo -e "$(date "+%F_%T"): $@" 1>&2;
 }
 
 function get_directory_git_hash() {
@@ -237,12 +296,12 @@ function get_directory_git_hash() {
   else
     echo_err "package name is: '${pkg_name}'"
   fi
-  echo_err "pkgdeps: ${PKG_DEPENDS} calc: $PKG_DEPENDS_CALCULATED" 
+  echo_err "pkgdeps: ${PKG_DEPENDS}" 
 
   if [[ "$no_dependencies" == "true" ]]; then
     echo_err "not evaluating dependencies"
   else
-    for dep in ${PKG_DEPENDS_CALCULATED//,/ }
+    for dep in ${PKG_DEPENDS//,/ }
     do
       if [[ "$dep" == "$pkg_name" ]]; then
         continue
@@ -323,7 +382,8 @@ function build_package() {
         build_command="bash"
         echo "starting build shell..."
       fi
-      ${SUDO} ${DOCKER_CMD} run --init --platform ${BUILD_PLATFORM} ${INTERACTIVE} ${DOCKER_ARGS} --env-file .env --rm --user ${UID}:"${GID}" -v "${BUILD_DIR}:${DOCKER_WORK_DIR}" -w "${DOCKER_WORK_DIR}/${SOURCE_DOCKER_DIR}" ${DOCKER_IMAGE} $build_command
+      echo "build platform: ${BUILD_PLATFORM} image: ${DOCKER_IMAGE}"
+      ${SUDO} ${DOCKER_CMD} run --pull=always --init --platform ${BUILD_PLATFORM} ${INTERACTIVE} ${DOCKER_ARGS} --env-file .env --rm --user ${UID}:"${GID}" -v "${BUILD_DIR}:${DOCKER_WORK_DIR}" -w "${DOCKER_WORK_DIR}/${SOURCE_DOCKER_DIR}" ${DOCKER_IMAGE} $build_command
 
       echo "err: $?"
 
@@ -404,6 +464,7 @@ function build_env_docker_image() {
       if [[ "${DOCKER_REMOTE}" == "true" ]]; then
         echo "Skipping local docker environment build as --remote is set"
       else
+        echo "building for platform: ${BUILD_PLATFORM}"
         docker buildx build --platform ${BUILD_PLATFORM} \
           --tag "${DOCKER_IMAGE}" \
           --build-arg "DOCKER_IMAGE=${IMAGE_BASE}:${BRANCH}" \
@@ -429,7 +490,7 @@ function package_port() {
     cp "${PACKAGE_DIR}/run" "${PACKAGE_DIR}/pkg/run"
   fi
 
-  for dep in ${PKG_DEPENDS_CALCULATED//,/ }
+  for dep in ${PKG_DEPENDS//,/ }
   do
     echo "copying dep: $dep"
     cp -r ${PACKAGE_DIR}/../$dep/pkg/* ${PACKAGE_DIR}/pkg/
@@ -504,7 +565,83 @@ function package_port() {
   fi
   
 }
+function remote_cache_matches() {
+  local directory="$1"
 
+  local pkg_zip_name="$PKG_ZIP_NAME_OVERRIDE"
+  if [[ -z "${pkg_zip_name}" ]]; then
+    pkg_zip_name="${PKG_NAME}"
+  fi
+
+  local release_match=false
+  if [[ -n "${GITHUB_TOKEN}" ]]; then
+    GITHUB_AUTH="Authorization: token ${GITHUB_TOKEN}"
+  fi
+  if [[ -z "${GITHUB_TOKEN}" ]]; then
+    echo "--remote requires setting a GITHUB_TOKEN variable to authenticate with github.  Otherwise you *will* get throttled."
+    exit 1
+  fi
+  if ! which jq &>/dev/null ; then
+    echo "jq is required.  Attempting install..."
+    if [[ ${OSTYPE:-} == 'darwin'* ]]; then
+      if ! brew install jq; then
+        echo "Could not install jq.  Please install it!"
+        exit 1
+      fi
+    else
+      sudo apt update
+      sudo apt install -y jq
+    fi
+  fi
+
+  local local_dependencies_cache_calculated="$(get_directory_git_hash ${directory})"
+  echo_err "local dependencies calc: ${local_dependencies_cache_calculated}"
+  local releases_url="releases?per_page=3&page=1"
+  echo_err "getting: ${releases_url}"
+  pkg_zip_name="$(echo ${pkg_zip_name} |sed 's/%20/./g'| sed 's/ /./g' | sed 's/\.\././')" #github releases turn ' ' and '%20' into '.'.  '..' is turned into '.' (Mr. Boom -> Mr.Boom)
+  echo_err "looking for asset: $pkg_zip_name"
+
+  local attempts=3
+  local attempt=-1
+  local releases_raw="$(github_api "${releases_url}")"
+  while [ "$attempt" -lt "$attempts" ]; do
+    attempt=$((attempt+1))
+    local release_id_dependencies_cache=$(echo -e "${releases_raw}" | jq ".[] | {release:.id, asset_id: .assets[] | select(.name==\"${pkg_zip_name}.zip\") | .id }"| jq -s ".[$attempt] | .release")
+    
+    local asset_id_zip=$(echo -e "${releases_raw}"  | jq ".[]| select(.id == ${release_id_dependencies_cache}) | .assets[] | select(.name==\"${pkg_zip_name}.zip\") | .id" | xargs )
+    if [[ -z "${asset_id_zip}" ]]; then
+      continue
+    fi
+    #local asset_id_dependencies_cache=$(echo -e "${releases_raw}" | jq ".[]| select(.id == ${release_id_dependencies_cache}) | .assets[] | select(.name==\"${pkg_zip_name}.dependencies.cache\") | .id" | xargs )
+    asset_id_dependencies_cache=$(echo -e "${releases_raw}" | jq ".[]| select(.id == ${release_id_dependencies_cache}) | .assets[] | select(.name==\"${pkg_zip_name}.git.info\") | .id" | xargs )
+    
+    #This is for backwards compatibility with .git.info and can be removed soon
+    if [[ -z "$asset_id_dependencies_cache" ]]; then
+      asset_id_dependencies_cache=$(echo -e "${releases_raw}" | jq ".[]| select(.id == ${release_id_dependencies_cache}) | .assets[] | select(.name==\"${pkg_zip_name}.git.info\") | .id" | xargs )
+    fi
+    if [[ -z "${asset_id_dependencies_cache}" ]]; then
+      continue
+    fi
+
+    echo_err "release: $release_id_dependencies_cache asset_id_zip: $asset_id_zip asset_id_dependencies_cache: $asset_id_dependencies_cache"
+    #echo_err "git info: $(echo -e "$asset_id_dependencies_cache")"
+    if [[ -n "$asset_id_zip" && -n "$asset_id_dependencies_cache" ]]; then
+      set +e
+      local release_name="$(echo -e "${releases_raw}" | jq ".[${attempt}] | .tag_name" | xargs)"
+      
+      local release_dependencies_cache_remote="$(github_api_asset_output "${release_name}" "${pkg_zip_name}.git.info")"
+      set -e
+     
+      echo_err "release ${pkg_zip_name}.dependencies.cache (remote): \n${LINE}\n${release_dependencies_cache_remote}\n${LINE}"
+      echo_err "local_dependencies_cache_calculated: $local_dependencies_cache_calculated"
+      if release_full_matches "${local_dependencies_cache_calculated}" "${release_dependencies_cache_remote}"; then
+        return 0
+      fi
+    fi
+
+  done
+  return 1
+}
 function parse_args() {
   USE_DOCKER=true
   USE_DOCKER_PUSH=false
@@ -513,6 +650,7 @@ function parse_args() {
   NO_BUILD_DEPENDS=false
   DOCKER_REMOTE=false
   REMOTE_BUILD_CACHE=false
+  REMOTE_BUILD_CACHE_CHECK=false
   NO_BUILD_CACHE=false
   PACKAGE=""
   PACKAGE_DIR=""
@@ -560,6 +698,11 @@ function parse_args() {
         REMOTE_BUILD_CACHE="true"
         shift # past argument
         ;;
+      --remote-build-cache-check)
+        REMOTE_BUILD_CACHE="true"
+        REMOTE_BUILD_CACHE_CHECK="true"
+        shift # past argument
+        ;;
       -d|--install-deps)
         INSTALL_DEPS="true"
         shift # past argument
@@ -584,6 +727,7 @@ function parse_args() {
         echo "  --install-deps (-d) - Runs the ./install-deps script automatically using 'sudo' if 'sudo' binary exists and the user is not root.  Only needed with --no-docker"
         echo "  --push (-p) - pushes docker images.  Meant for build server"
         echo "  --remote-build-cache - indicates to look for pre-built images in GitHub releases.  Requires setting GITHUB_TOKEN due to high github API usage."
+        echo "  --remote-build-cache-check - implies --remote-build-cache - does not download or build, just stops when there is a cache hit (0) or miss (1)"
         echo "  --docker-remote - do not use local docker images and always pull images.  Meant to help simulate build server locally. Will not build changes to install-deps for ports"
         exit 1
         ;;
@@ -638,13 +782,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "Building: ${PACKAGE}"
   echo "================================="
   echo "pkg depends: ${PKG_DEPENDS}"
-  if [[ "$LEGACY_PORTMASTER" != "true" && "$PACKAGE" != "global" && "$PKG_GLOBAL" != "false" && "$PKG_LIBRARY" != "true" ]] || [[ "$PKG_LIBRARY" != "true" && "$PKG_GLOBAL" == "true" ]]; then
-    PKG_DEPENDS_CALCULATED="global, $PKG_DEPENDS"
-  else
-    PKG_DEPENDS_CALCULATED="$PKG_DEPENDS"
-  fi
 
-  for dep in ${PKG_DEPENDS_CALCULATED//,/ }
+  for dep in ${PKG_DEPENDS//,/ }
   do
 
     if [[ "$NO_BUILD_DEPENDS" == "true" ]]; then
@@ -739,107 +878,69 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     cp "${PACKAGE_DIR}/../package.legacy.template" "${PACKAGE_DIR}/package.tmp"
   fi
   echo "package dir: ${PACKAGE_DIR}"
-  NEW_GIT_INFO="$(get_directory_git_hash ${PACKAGE_DIR})"
+
+  NEW_DEPENDENCIES_CACHE="$(get_directory_git_hash ${PACKAGE_DIR})"
   RELEASE_DIR="$(realpath ${PACKAGE_DIR}/../../release)"
   mkdir -p "${RELEASE_DIR}"
-  RELEASE_GIT_INFO_FILE="${RELEASE_DIR:?}/${PKG_ZIP_NAME_OVERRIDE}.git.info"
-  RELEASE_GIT_INFO_ZIP="${RELEASE_DIR:?}/${PKG_ZIP_NAME_OVERRIDE}.zip"
+  RELEASE_DEPENDENCIES_CACHE_FILE="${RELEASE_DIR:?}/${PKG_ZIP_NAME_OVERRIDE}.dependencies.cache"
+  RELEASE_DEPENDENCIES_CACHE_ZIP="${RELEASE_DIR:?}/${PKG_ZIP_NAME_OVERRIDE}.zip"
   
   PKG_DIRECTORY="${PACKAGE}"
   if [[ -n "${PKG_DIRECTORY_OVERRIDE}" ]]; then
     PKG_DIRECTORY="$PKG_DIRECTORY_OVERRIDE"
   fi
 
-  if [[ -f "$RELEASE_GIT_INFO_FILE" ]]; then
-    RELEASE_GIT_INFO_LOCAL="$(cat "${RELEASE_GIT_INFO_FILE}")"
+  if [[ -f "$RELEASE_DEPENDENCIES_CACHE_FILE" ]]; then
+    RELEASE_DEPENDENCIES_CACHE_LOCAL="$(cat "${RELEASE_DEPENDENCIES_CACHE_FILE}")"
   fi
   LINE="------------------------"
   echo "$LINE"
 
-  echo -e "release ${PKG_ZIP_NAME_OVERRIDE}.git.info (local): \n${LINE}\n${RELEASE_GIT_INFO_LOCAL}\n${LINE}"
+  echo -e "release ${PKG_ZIP_NAME_OVERRIDE}.dependencies.cache (local): \n${LINE}\n${RELEASE_DEPENDENCIES_CACHE_LOCAL}\n${LINE}"
 
-  echo -e "calculated ${PKG_ZIP_NAME_OVERRIDE}.git.info (local): \n${LINE}\n${NEW_GIT_INFO}\n${LINE}"
+  echo -e "calculated ${PKG_ZIP_NAME_OVERRIDE}.dependencies.cache (local): \n${LINE}\n${NEW_DEPENDENCIES_CACHE}\n${LINE}"
 
   if [[ "$NO_BUILD_CACHE" == "true" ]]; then
     echo "Not using build cache..."
   elif [[ ! -d "${PACKAGE_DIR}/pkg" ]] || [[ -z $(ls -A "${PACKAGE_DIR}/pkg") ]]; then
     echo "pkg directory seems to have been removed - rebuilding"
-  elif [[ "${NEW_GIT_INFO}" == "${RELEASE_GIT_INFO_LOCAL}" ]]; then
+  elif [[ "${NEW_DEPENDENCIES_CACHE}" == "${RELEASE_DEPENDENCIES_CACHE_LOCAL}" ]]; then
     echo "Build already exists - local"
     exit 0
   fi
   echo "use remote build cache: ${REMOTE_BUILD_CACHE}"
   if [[ "${REMOTE_BUILD_CACHE}" == "true" && "$NO_BUILD_CACHE" == "false" ]]; then
-    if [[ -z "${GITHUB_AUTH}" ]]; then
-      echo "--remote requires setting a GITHUB_TOKEN variable to authenticate with github.  Otherwise you *will* get throttled."
-      exit 1
-    fi
-    if ! which jq &>/dev/null ; then
-      echo "jq is required.  Attempting install..."
-      if [[ ${OSTYPE:-} == 'darwin'* ]]; then
-        if ! brew install jq; then
-          echo "Could not install jq.  Please install it!"
-          exit 1
-        fi
-      else
-        sudo apt update
-        sudo apt install -y jq
+    
+    if remote_cache_matches "$DIR/$PACKAGE"; then
+      if [[ "${REMOTE_BUILD_CACHE_CHECK}" == "true" ]]; then
+        echo "Remote build already exists - check only so no download"
+        exit 0
       fi
-
-    fi
-    releases_url="releases?per_page=10&page=1"
-    echo "getting: ${releases_url}"
-    PKG_ZIP_NAME_OVERRIDE_GITHUB="$(echo ${PKG_ZIP_NAME_OVERRIDE} | sed 's/ /./g')"
-    echo "looking for asset: $PKG_ZIP_NAME_OVERRIDE_GITHUB"
-
-    attempts=10
-    attempt=0
-    releases_raw="$(github_api "${releases_url}")"
-    while [ "$attempt" -lt "$attempts" ]; do
-      release_id_git_info=$(echo -e "${releases_raw}" | jq ".[] | {release:.id, asset_id: .assets[] | select(.name==\"${PKG_ZIP_NAME_OVERRIDE_GITHUB}.zip\") | .id }"| jq -s ".[$attempt] | .release")
-      asset_id_zip=$(echo -e "${releases_raw}"  | jq ".[]| select(.id == ${release_id_git_info}) | .assets[] | select(.name==\"${PKG_ZIP_NAME_OVERRIDE_GITHUB}.zip\") | .id" | xargs )
-      asset_id_git_info=$(echo -e "${releases_raw}" | jq ".[]| select(.id == ${release_id_git_info}) | .assets[] | select(.name==\"${PKG_ZIP_NAME_OVERRIDE_GITHUB}.git.info\") | .id" | xargs )
-      echo "release: $release_id_git_info asset_id_zip: $asset_id_zip asset_id_git_info: $asset_id_git_info"
-      echo "git info: $(echo -e "$asset_id_git_info")"
-      if [[ -n "$asset_id_zip" && -n "$asset_id_git_info" ]]; then
-        set +e
-        RELEASE_GIT_INFO_REMOTE=$(github_api_asset_output "${asset_id_git_info}")
-        set -e
-
-        echo -e "release ${PKG_ZIP_NAME_OVERRIDE_GITHUB}.git.info (remote): \n${LINE}\n${RELEASE_GIT_INFO_REMOTE}\n${LINE}"
-
-        RELEASE_MATCHES="false"
-
-        if release_matches "${PACKAGE}" "${NEW_GIT_INFO}" "${RELEASE_GIT_INFO_REMOTE}"; then
-          RELEASE_MATCHES="true"
-          break
-        fi
-      fi
-      attempt=$((attempt+1))
-    done
-  
-    if [[ "${RELEASE_MATCHES}" == "true" ]]; then
       echo "Build already exists - remote - downloading..."
       echo "Finding: ${PKG_ZIP_NAME_OVERRIDE_GITHUB}.zip"
       echo "PKG_LIBRARY: ${PKG_LIBRARY}"
       echo "asset id zip: ${asset_id_zip}"
+      github_api_asset_download "${asset_id_zip}" "${RELEASE_DEPENDENCIES_CACHE_ZIP}"
 
-      github_api_asset_download "${asset_id_zip}" "${RELEASE_GIT_INFO_ZIP}"
       pushd "$RELEASE_DIR" &> /dev/null
 
-      if [[ -f "$RELEASE_GIT_INFO_ZIP" ]]; then
+      if [[ -f "$RELEASE_DEPENDENCIES_CACHE_ZIP" ]]; then
         rm -rf "./${PKG_NAME}"
-        if unzip -o "${RELEASE_GIT_INFO_ZIP}"; then
+        if unzip -o "${RELEASE_DEPENDENCIES_CACHE_ZIP}"; then
           echo "download: ${PKG_ZIP_NAME_OVERRIDE} directory: ${PKG_DIRECTORY_OVERRIDE}"
-          rm -rf "${PACKAGE_DIR}/pkg"
+          
+          if [[ -d "${PACKAGE_DIR}/pkg" ]]; then
+            chmod +w -R "${PACKAGE_DIR}/pkg" #srb2kart has non-writable permissions to owner -this works around permission probems in remove
+            rm -rf "${PACKAGE_DIR}/pkg"
+          fi
           cp -r "${PKG_DIRECTORY}" "${PACKAGE_DIR}/pkg"
   
-          echo "Updating git info: $RELEASE_GIT_INFO_FILE"
-          echo -e "${RELEASE_GIT_INFO_REMOTE}" > "$RELEASE_GIT_INFO_FILE"
+          echo "Updating git info: $RELEASE_DEPENDENCIES_CACHE_FILE"
+          echo -e "${release_dependencies_cache_remote}" > "$RELEASE_DEPENDENCIES_CACHE_FILE"
           echo "Remote download success"
           
           # only exit if it was an exact match, a partial match we need to repackage
-          if [[ "${NEW_GIT_INFO}" == "${RELEASE_GIT_INFO_REMOTE}" ]]; then
+          if [[ "${NEW_DEPENDENCIES_CACHE}" == "${release_dependencies_cache_remote}" ]]; then
             exit 0
           fi
         else
@@ -849,11 +950,15 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         echo "zip not found.  Something went wrong downloading.."
       fi 
     fi
+    if [[ "${REMOTE_BUILD_CACHE_CHECK}" == "true" ]]; then
+      echo "No remote build found that matches"
+      exit 1
+    fi
     echo 'remote checking done'
   fi
-  
-  if [[ -f "$RELEASE_GIT_INFO_FILE" ]]; then
-    RELEASE_GIT_INFO_LOCAL="$(cat "${RELEASE_GIT_INFO_FILE}")"
+
+  if [[ -f "$RELEASE_DEPENDENCIES_CACHE_FILE" ]]; then
+    RELEASE_DEPENDENCIES_CACHE_LOCAL="$(cat "${RELEASE_DEPENDENCIES_CACHE_FILE}")"
   fi
   # Default BUILD_PLATFORM to arm64 unless set in package.info or by LEGACY_PORTMASTER
   if [[ -z "$BUILD_PLATFORM" ]]; then
@@ -891,7 +996,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   #if the release git info matches (but not dependencies, or it would have been an exact match), we don't need to rebuild, just repackage
   # - Still rebuild on NO_BUILD_CACHE (--no-build-cache)
   # - Still rebuild if the /pkg directory is empty for some reason
-  if ! release_matches "${PACKAGE}" "${NEW_GIT_INFO}" "${RELEASE_GIT_INFO_LOCAL}" || [[ "${NO_BUILD_CACHE}" == "true" ]] || [[ ! -d "${PACKAGE_DIR}/pkg" ]] || [[ -z $(ls -A "${PACKAGE_DIR}/pkg") ]]; then
+  if ! release_matches "${PACKAGE}" "${NEW_DEPENDENCIES_CACHE}" "${RELEASE_DEPENDENCIES_CACHE_LOCAL}" || [[ "${NO_BUILD_CACHE}" == "true" ]] || [[ ! -d "${PACKAGE_DIR}/pkg" ]] || [[ -z $(ls -A "${PACKAGE_DIR}/pkg") ]]; then
     rm -rf "${PACKAGE_DIR}/pkg"
     mkdir -p "${PACKAGE_DIR}/pkg/"
     build_env_docker_image "$PACKAGE" "$PACKAGE_DIR"
@@ -913,7 +1018,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   rm -rf "${RELEASE_DIR:?}/${PKG_ZIP_NAME_OVERRIDE}"
   rm -rf "${RELEASE_DIR:?}/${PKG_ZIP_NAME_OVERRIDE}.zip"
 
-  echo -e "$NEW_GIT_INFO" > "${RELEASE_GIT_INFO_FILE}"
+  echo -e "$NEW_DEPENDENCIES_CACHE" > "${RELEASE_DEPENDENCIES_CACHE_FILE}"
 
   if [[ "${NO_RELEASE_ZIP}" == "false" ]]; then
     echo "Preparing release zip..."
