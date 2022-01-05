@@ -12,7 +12,6 @@ function parse_args() {
   BUILD_SPLIT_TOTAL=""
   BUILD_SPLIT=""
   SHOW_NAME=""
-  USE_REMOTE_BUILD_CACHE="false"
 
   # Parse args
   ARGS=()
@@ -34,10 +33,6 @@ function parse_args() {
         ;;
       --builds)
         BUILDS="true"
-        shift # past argument
-        ;;
-      --use-remote-build-cache)
-        USE_REMOTE_BUILD_CACHE="true"
         shift # past argument
         ;;
       --no-build*)
@@ -66,7 +61,6 @@ function parse_args() {
         echo "  --legacy-override-url - lists all LEGACY_PORTMASTER=true which have a LEGACY_URL_OVERRIDE"
         echo "  --builds - lists all non-legacy builds"
         echo "  --no-builds - just output the list of builds which would be run"
-        echo "  --use-remote-build-cache - use remote cache to see if a build needs to be run"
         echo "  --show-name - outputs PKG_NAME instead of the directory name.  Useful with --no-builds"
         echo "  --build-shard-total - the total number to shard the jobs into - used with --build-shard to only build a subset of builds"
         echo "  --build-shard - the specific shards (modulus) to run.  Starts from 1.  Ex: --build-shard-total=5 and --build-shard=1 the first of each 5 builds will be run" 
@@ -81,7 +75,6 @@ function parse_args() {
   done
 }
 parse_args "$@"
-source $DIR/build
 
 CURRENT_BUILD_SPLIT=0
 for directory in ${DIR}/*/; do
@@ -103,7 +96,6 @@ for directory in ${DIR}/*/; do
     LEGACY_PORTMASTER=""
     BUILD_ALL=""
     PKG_ZIP_NAME_OVERRIDE=""
-    PKG_DEPENDS=""
     source "${directory}/package.info"
 
     if [[ "${BUILD_ALL}" == "false" ]]; then
@@ -111,12 +103,6 @@ for directory in ${DIR}/*/; do
     fi
     TO_BUILD="$(basename ${directory})"
     TO_BUILD_NAME=$TO_BUILD
-
-    if [[ "$USE_REMOTE_BUILD_CACHE" == "true" ]] && remote_cache_matches ${directory}; then
-       echo_err "remote cache matches for: $TO_BUILD"
-       continue
-    fi
-
     if [[ "${SHOW_NAME}" == "true" ]]; then
       TO_BUILD_NAME="$PKG_NAME"
       if [[ -n "${PKG_ZIP_NAME_OVERRIDE}" ]]; then
