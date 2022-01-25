@@ -101,7 +101,7 @@ jobs:
         run: |
          ./init-docker
          ./ports/build-base-images --push --platform linux/arm/v7,linux/arm64/v8,linux/amd64
-         REMOTE_BUILD_CACHE="--remote-build-cache"
+         REMOTE_BUILD_CACHE="--use-remote-build-cache"
          if [[ -n "${{github.event.inputs.no_cache}}" ]]; then
             REMOTE_BUILD_CACHE=""
          fi
@@ -175,7 +175,7 @@ jobs:
         run: |
            set -e
            ./init-docker
-           REMOTE_BUILD_CACHE="--remote-build-cache"
+           REMOTE_BUILD_CACHE="--use-remote-build-cache"
            if [[ -n "${{github.event.inputs.no_cache}}" ]]; then
               REMOTE_BUILD_CACHE=""
            fi
