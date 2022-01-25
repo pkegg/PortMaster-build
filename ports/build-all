@@ -22,18 +22,22 @@ function parse_args() {
     case $key in
       -l|--libraries)
         LIBRARIES="true"
+        BUILD_ALL=false
         shift # past argument
         ;;
       --legacy-default)
         LEGACY_PORTMASTER_DEFAULT="true"
+        BUILD_ALL=false
         shift # past argument
         ;;
       --legacy-url-override)
         LEGACY_PORTMASTER_OVERRIDE="true"
+        BUILD_ALL=false
         shift # past argument
         ;;
       --builds)
         BUILDS="true"
+        BUILD_ALL=false
         shift # past argument
         ;;
       --use-remote-build-cache)
@@ -80,6 +84,34 @@ function parse_args() {
     esac
   done
 }
+function get_to_build_name() {
+
+  local TO_BUILD="$1"
+
+}
+function run_build() {
+
+    local directory="$1"
+    local BUILD_ARGS="$2"
+    local TO_BUILD="$(basename ${directory})"
+    local TO_BUILD_NAME=$TO_BUILD
+
+    if [[ "${SHOW_NAME}" == "true" ]]; then
+      TO_BUILD_NAME="$PKG_NAME"
+      if [[ -n "${PKG_ZIP_NAME_OVERRIDE}" ]]; then
+         TO_BUILD_NAME="$PKG_ZIP_NAME_OVERRIDE"
+      fi
+    fi
+    if [[ "$USE_REMOTE_BUILD_CACHE" == "true" ]] && remote_cache_matches ${directory}; then
+       echo_err "remote cache matches for: $TO_BUILD"
+       return
+    fi
+    echo "${TO_BUILD_NAME}"
+    if [[ "${DO_BUILD}" == "true" ]]; then
+      ${DIR}/build "${TO_BUILD}" "${BUILD_ARGS}"
+    fi
+
+}
 parse_args "$@"
 source $DIR/build
 
@@ -101,76 +133,21 @@ for directory in ${DIR}/*/; do
     PKG_LIBRARY=""
     LEGACY_URL_OVERRIDE=""
     LEGACY_PORTMASTER=""
-    BUILD_ALL=""
     PKG_ZIP_NAME_OVERRIDE=""
     PKG_DEPENDS=""
     source "${directory}/package.info"
 
-    if [[ "${BUILD_ALL}" == "false" ]]; then
-      continue
-    fi
-    TO_BUILD="$(basename ${directory})"
-    TO_BUILD_NAME=$TO_BUILD
 
-    if [[ "$USE_REMOTE_BUILD_CACHE" == "true" ]] && remote_cache_matches ${directory}; then
-       echo_err "remote cache matches for: $TO_BUILD"
-       continue
-    fi
-
-    if [[ "${SHOW_NAME}" == "true" ]]; then
-      TO_BUILD_NAME="$PKG_NAME"
-      if [[ -n "${PKG_ZIP_NAME_OVERRIDE}" ]]; then
-      
-         TO_BUILD_NAME="$PKG_ZIP_NAME_OVERRIDE"
-      fi
-      
-    fi
-    DEFAULT=true
-    if [[ "${LEGACY_PORTMASTER_OVERRIDE}" == "true" ]]; then
-       DEFAULT=false
-       if [[ -n "${LEGACY_URL_OVERRIDE}" &&  "${LEGACY_PORTMASTER}" == "true" ]]; then
-          echo "${TO_BUILD_NAME}"
-          if [[ "${DO_BUILD}" == "true" ]]; then
-            ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
-          fi
-       fi
-    fi
-    if [[ "${LEGACY_PORTMASTER_DEFAULT}" == "true" ]]; then
-       DEFAULT=false
-
-       if [[ -z "${LEGACY_URL_OVERRIDE}" &&  "${LEGACY_PORTMASTER}" == "true" ]]; then
-          echo "${TO_BUILD_NAME}"
-          if [[ "${DO_BUILD}" == "true" ]]; then
-            ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
-          fi
-       fi
-    fi
-    if [[ "${BUILDS}" == "true" ]]; then
-       DEFAULT=false
-
-       if [[ -n "${PKG_URL}" &&  "${LEGACY_PORTMASTER}" != "true" &&  "${PKG_LIBRARY}" != "true" ]]; then
-          echo "${TO_BUILD_NAME}"
-          if [[ "${DO_BUILD}" == "true" ]]; then
-            ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
-          fi
-       fi
-    fi
-    if [[ "${LIBRARIES}" == "true" ]]; then
-      DEFAULT=false
-      if [[ "${PKG_LIBRARY}" == "true" ]]; then
-        echo "${TO_BUILD_NAME}"
-        if [[ "${DO_BUILD}" == "true" ]]; then
-          ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
-        fi
-      fi
-    fi
-    
-    
-    if [[ "${DEFAULT}" == "true" && "${PKG_LIBRARY}" != "true" ]]; then
-      echo "${TO_BUILD_NAME}"
-      if [[ "${DO_BUILD}" == "true" ]]; then
-        ${DIR}/build "${TO_BUILD}" "${ARGS_COPY[@]}"
-      fi
+    if [[ "${LIBRARIES}" == "true"  && -n "$PKG_LIBRARY" ]]; then
+      run_build "${directory}" "${ARGS_COPY[@]}"
+    elif [[ "${LEGACY_PORTMASTER_OVERRIDE}" == "true" && -n "${LEGACY_URL_OVERRIDE}" &&  "${LEGACY_PORTMASTER}" == "true" ]]; then
+      run_build "${directory}" "${ARGS_COPY[@]}"
+    elif [[ "${LEGACY_PORTMASTER_DEFAULT}" == "true" && -z "${LEGACY_URL_OVERRIDE}" &&  "${LEGACY_PORTMASTER}" == "true" ]]; then
+      run_build "${directory}" "${ARGS_COPY[@]}"
+    elif [[ "${BUILDS}" == "true" ]]; then
+      run_build "${directory}" "${ARGS_COPY[@]}"
+    elif [[ "$BUILD_ALL" != "false" ]]; then
+      run_build "${directory}" "${ARGS_COPY[@]}"
     fi
   fi
 done
