@@ -73,14 +73,13 @@ jobs:
             echo "::set-output name=token::${default_token}"
             echo "using default"
           fi
-          
       - id: set-matrix
         name: Determine Matrix Builds
         run: |
-            ./ports/build-all  --no-build --builds
-            ./ports/build-all  --no-build --builds --use-remote-build-cache
+            env
+            export GITHUB_TOKEN="$GITHUB_TOKEN"
             echo -ne '::set-output name=matrix::{"package":['
-            echo -ne $(./ports/build-all  --no-build --builds | sed -e 's/^\|$/"/g' |sort | tr '\n' ',')
+            echo -ne $(./ports/build-all  --no-build --builds --use-remote-build-cache | sed -e 's/^\|$/"/g' |sort | tr '\n' ',')
             echo ']}'
         env:
             GITHUB_TOKEN: ${{ steps.token.outputs.token }}
@@ -107,7 +106,7 @@ jobs:
             REMOTE_BUILD_CACHE=""
          fi
          
-         ./ports/build-all --libraries --push ${REMOTE_BUILD_CACHE}
+         ./ports/build-all --libraries ${REMOTE_BUILD_CACHE}
         env:
             GITHUB_TOKEN: ${{ steps.token.outputs.token }}
       - name: "Publish draft pre-release."
@@ -180,7 +179,7 @@ jobs:
            if [[ -n "${{github.event.inputs.no_cache}}" ]]; then
               REMOTE_BUILD_CACHE=""
            fi
-           ./ports/build-all --build-shard ${{ matrix.shard }} --build-shard-total 6 --legacy-default --legacy-url-override  --push ${REMOTE_BUILD_CACHE}
+           ./ports/build-all --build-shard ${{ matrix.shard }} --build-shard-total 6 --legacy-default --legacy-url-override ${REMOTE_BUILD_CACHE}
            
         env:
             GITHUB_TOKEN: ${{ steps.token.outputs.token }}

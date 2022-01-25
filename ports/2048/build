@@ -7,3 +7,4 @@ set -e
 
 make -f Makefile.libretro platform=arm64 all -j$(nproc)
 cp 2048_libretro.dll ../pkg/2048_libretro.so
+

@@ -8,7 +8,7 @@ else
   GITHUB_URL=https://github.com
 fi
 
-GITHUB_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+GITHUB_BRANCH="main"
 
 #This needs to work for both: https://github.com/<org>/PortMaster and git@github.com:<org>/PortMaster.git
 GITHUB_ORG=$(dirname $(git config --get remote.origin.url) | sed "s|.*:||g" | sed "s|.*/||g" | tr '[:upper:]' '[:lower:]')
