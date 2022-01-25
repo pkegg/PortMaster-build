@@ -53,7 +53,7 @@ CACHE_FROM="$BRANCH"
 # Update things for Pull requests
 if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request_target" && -n "$GITHUB_BASE_REF" && -n "$GITHUB_REF_NAME" ]] ; then
   PR_NUM=$(echo $GITHUB_REF_NAME | sed 's|/.*||g')
-  BRANCH="pr-${PR_NUM}"
+  #BRANCH="pr-${PR_NUM}"
   CACHE_FROM="$GITHUB_BASE_REF"
   echo "branch: ${BRANCH}"
   echo "EVENT_NAME: ${GITHUB_EVENT_NAME} BASE_REF: $GITHUB_BASE_REF REF_NAME: $GITHUB_REF_NAME"
