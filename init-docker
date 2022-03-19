@@ -5,6 +5,8 @@ if ! which docker &> /dev/null; then
     echo "Attempting to install docker.  If you do not want this.  Install manually from https://docs.docker.com/engine/install/"
     sudo apt update
     sudo apt install docker.io -y
+  elif which pacman &> /dev/null; then
+    sudo pacman -S --noconfirm docker
   else
     echo "Please install docker.  It is suggested to install docker from https://docs.docker.com/engine/install/"
   exit 1
@@ -66,13 +68,14 @@ fi
 
 if [[ $OSTYPE == 'darwin'* ]]; then
   echo "no need to install qemu on mac - OK"
-elif [[ "$(arch)" == "amd64" && ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
+
+elif which arch &> /dev/null && [[ "$(arch)" == "amd64" && ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 || ! -f /proc/sys/fs/binfmt_misc/qemu-arm ]]; then
   if which dpkg; then
     echo "Permanently installing support for other platforms"
     sudo apt-get update
     sudo apt-get install -y qemu binfmt-support qemu-user-static
   else
-    echo "Could not install qemu, binfmt-support and qemu-user-static.  $0 may need to be run after each reboot"
+    echo "WARNING: Could not install qemu, binfmt-support and qemu-user-static.  $0 may need to be run after each reboot!"
     docker run --rm --privileged tonistiigi/binfmt:latest --install all
   fi
   

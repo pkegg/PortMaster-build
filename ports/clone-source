@@ -163,6 +163,7 @@ function patch_source() {
 
   pushd "$PACKAGE_DIR/source" &> /dev/null
 	if [[ ! -z "$patches" ]]; then
+    
     # If you are patching source code it needs to be clean
     git reset --hard HEAD
 

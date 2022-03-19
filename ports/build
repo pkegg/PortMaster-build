@@ -588,6 +588,8 @@ function remote_cache_matches() {
         echo "Could not install jq.  Please install it!"
         exit 1
       fi
+    elif [ -f "/etc/arch-release" ]; then
+      sudo pacman --noconfirm -S jq
     else
       sudo apt update
       sudo apt install -y jq
@@ -807,13 +809,30 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   fi
   if ! which zip &>/dev/null ; then
     echo "zip is required.  Attempting install..."
-    sudo apt update
-    sudo apt install -y zip
+    if [ -f "/etc/arch-release" ]; then
+      sudo pacman --noconfirm -S zip
+    else
+      sudo apt update
+      sudo apt install -y zip
+    fi
   fi
   if ! which unzip &>/dev/null ; then
     echo "unzip is required.  Attempting install..."
-    sudo apt update
-    sudo apt install -y unzip
+    if [ -f "/etc/arch-release" ]; then
+      sudo pacman --noconfirm -S unzip
+    else
+      sudo apt update
+      sudo apt install -y unzip
+    fi
+  fi
+  if ! which patch &>/dev/null ; then
+    if [ -f "/etc/arch-release" ]; then
+      sudo pacman -S --noconfirm patch 
+    else
+      sudo apt update
+      sudo apt install -y patch 
+    fi
+   
   fi
   GITHUB_AUTH=""
   if [[ -n "${GITHUB_TOKEN}" ]]; then
